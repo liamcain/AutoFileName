@@ -8,21 +8,14 @@ class FileNameComplete(sublime_plugin.EventListener):
 
         if "string" in view.syntax_name(sel):
             pass
-        elif "./" in view.substr(sublime.Region(sel-3,sel)):
+        elif "/" in view.substr(sublime.Region(sel-2,sel)):
             pass
         else:
             return []
 
-        this_file = view.file_name()
-        dir_len = this_file.rfind('/') #(for OSX)
+        this_dir = os.path.split(view.file_name())[0] + "/"
 
-        if not dir_len > 0:
-            dir_len = this_file.rfind('\\') #(for Windows)
-        
-        this_dir = this_file[:(dir_len + 1)] # + 1 for the '/'
-        this_dir += view.substr(view.extract_scope(sel-1)).replace('\"','') # strings are quoted
-
-        print this_dir
+        this_dir += view.substr(view.extract_scope(sel-1)).replace('\"','') # strings are returned in quotes
 
         dir_files = os.listdir(this_dir)
         for d in dir_files:
