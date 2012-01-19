@@ -17,10 +17,12 @@ class FileNameComplete(sublime_plugin.EventListener):
 
         this_dir += view.substr(view.extract_scope(sel-1)).replace('\"','') # strings are returned in quotes
 
-        dir_files = os.listdir(this_dir)
-        for d in dir_files:
-            if not '.' in d:
-                d += '/'
-            completions.append(d)
-
-        return [(x, x) for x in list(set(completions))]
+        try:
+            dir_files = os.listdir(this_dir)
+            for d in dir_files:
+                if not '.' in d:
+                    d += '/'
+                completions.append(d.decode('utf-8'))
+            return [(x, x) for x in list(set(completions))]
+        except OSError:
+            return []
