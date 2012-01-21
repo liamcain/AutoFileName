@@ -6,16 +6,24 @@ class FileNameComplete(sublime_plugin.EventListener):
         completions = []
         sel = view.sel()[0].a
 
-        if "string" in view.syntax_name(sel):
-            pass
-        elif "/" in view.substr(sublime.Region(sel-2,sel)):
-            pass
+        if "/" in view.substr(sublime.Region(sel-2,sel)):
+            if "string" in view.scope_name(sel):
+                pass
+            elif "css" in view.scope_name(sel):
+                pass
+            else:
+                return []
         else:
             return []
 
         this_dir = os.path.split(view.file_name())[0] + "/"
 
-        this_dir += view.substr(view.extract_scope(sel-1)).replace('\"','') # strings are returned in quotes
+        cur_path = view.substr(view.extract_scope(sel-1))
+
+        if cur_path.startswith(("'","\"")):
+            cur_path = cur_path[1:-1]
+
+        this_dir += cur_path
 
         try:
             dir_files = os.listdir(this_dir)
@@ -25,4 +33,5 @@ class FileNameComplete(sublime_plugin.EventListener):
                 completions.append(d.decode('utf-8'))
             return [(x, x) for x in list(set(completions))]
         except OSError:
+            print "AutoFileName: could not find " + this_dir
             return []
