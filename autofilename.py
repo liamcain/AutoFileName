@@ -6,7 +6,7 @@ class FileNameComplete(sublime_plugin.EventListener):
         completions = []
         sel = view.sel()[0].a
 
-        if os.path.sep in view.substr(sublime.Region(sel-2,sel)):
+        if '\\' or '/' in view.substr(sublime.Region(sel-2,sel)):
             if "string" in view.scope_name(sel):
                 pass
             elif "css" in view.scope_name(sel):
