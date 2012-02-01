@@ -4,7 +4,6 @@ class FileNameComplete(sublime_plugin.EventListener):
 
     def prev_has(self, view, string):
         sel = view.sel()[0].a
-        print string, view.substr(sel-2)
         return string in view.substr(sublime.Region(sel-1, sel))
 
     def on_query_completions(self, view, prefix, locations):
@@ -12,7 +11,6 @@ class FileNameComplete(sublime_plugin.EventListener):
         sel = view.sel()[0].a
 
         if self.prev_has(view, '/') or self.prev_has(view, '\\\\'):
-            print "yes"
             if "string" in view.scope_name(sel):
                 pass
             elif "css" in view.scope_name(sel):
