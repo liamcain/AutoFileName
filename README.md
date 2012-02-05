@@ -1,4 +1,4 @@
-AutoFileName: Autocomplete Filename's in Sublime Text
+AutoFileName: Autocomplete Filenames in Sublime Text
 =====================================================
 Do you ever find yourself sifting through folders in the sidebar trying to remember what you named that file? Can't remember if it was a jpg or a png? Maybe you just wish you could type filenames faster. *No more.*
 
