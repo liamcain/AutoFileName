@@ -15,6 +15,8 @@ class FileNameComplete(sublime_plugin.EventListener):
                 pass
             elif "css" in view.scope_name(sel):
                 pass
+            elif "sass" in view.scope_name(sel):
+                pass
             else:
                 return []
         else:
