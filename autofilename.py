@@ -24,7 +24,7 @@ class FileNameComplete(sublime_plugin.EventListener):
 
         this_dir = os.path.split(view.file_name())[0] + os.path.sep
 
-        cur_path = view.substr(view.extract_scope(sel-1))
+        cur_path = view.substr(view.extract_scope(sel-1)).replace('\r\n', '\n').split('\n')[0]
 
         if cur_path.startswith(("'","\"")):
             cur_path = cur_path[1:-1]
