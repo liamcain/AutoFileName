@@ -32,6 +32,8 @@ class FileNameComplete(sublime_plugin.EventListener):
 
         if cur_path.startswith(("'","\"")):
             cur_path = cur_path[1:-1]
+        if cur_path.startswith("/"):
+            cur_path = "." + cur_path
 
         this_dir = os.path.join(this_dir, cur_path)
 
