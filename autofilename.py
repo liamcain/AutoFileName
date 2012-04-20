@@ -8,6 +8,11 @@ class FileNameComplete(sublime_plugin.EventListener):
 
     def on_query_completions(self, view, prefix, locations):
         completions = []
+        backup = []
+
+        for x in view.find_all("[a-zA-Z]+"):
+                    backup.append(view.substr(x))
+
         sel = view.sel()[0].a
 
         if self.prev_has(view, '/') or self.prev_has(view, '\\\\'):
@@ -18,9 +23,9 @@ class FileNameComplete(sublime_plugin.EventListener):
             elif "sass" in view.scope_name(sel):
                 pass
             else:
-                return []
+                return backup
         else:
-            return []
+            return backup
 
         this_dir = os.path.split(view.file_name())[0] + os.path.sep
 
