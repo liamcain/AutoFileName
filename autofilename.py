@@ -6,31 +6,28 @@ class FileNameComplete(sublime_plugin.EventListener):
         sel = view.sel()[0].a
         return string in view.substr(sublime.Region(sel-1, sel))
 
-    def in_empty_string(self,view,sel):
+    def is_empty_string(self,view,sel):
         string = view.substr(view.extract_scope(sel))
-        if string.startswith(("'","\"")):
-            string = string[1:-1]
-        return len(string) == 0
+        return len(string) < 3
 
     def on_query_completions(self, view, prefix, locations):
         completions = []
         valid_scopes = ["string", "css", "sass", "scss"]
         backup = []
+        sel = view.sel()[0].a
 
         for x in view.find_all("[a-zA-Z]+"):
                     backup.append(view.substr(x))
 
-        sel = view.sel()[0].a
-
         if not any(s in view.scope_name(sel) for s in valid_scopes):
             return backup
-        if not self.in_empty_string(view,sel) or self.prev_has(view, '/') or self.prev_has(view, '\\\\'):
+        if not (self.is_empty_string(view,sel) or self.prev_has(view, '/') or self.prev_has(view, '\\\\')):
             return backup
 
         this_dir = os.path.split(view.file_name())[0] + os.path.sep
         cur_path = view.substr(view.extract_scope(sel-1)).replace('\r\n', '\n').split('\n')[0]
 
-        if cur_path.startswith(("'","\"")):
+        if cur_path.startswith(("'","\"","(")):
             cur_path = cur_path[1:-1]
 
         this_dir = os.path.join(this_dir, cur_path)
