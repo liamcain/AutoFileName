@@ -7,11 +7,10 @@ class AfnCommitCompCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         view = self.view
         sel = view.sel()[0].a
+        if not 'string' in view.scope_name(sel): return
         scope_end = view.extract_scope(sel-1).b - 1
         region = sublime.Region(sel, scope_end)
         view.erase(edit, region)
-
-        view.insert(edit, sel+3, 'height=""')
 
 class FileNameComplete(sublime_plugin.EventListener):
 
@@ -26,14 +25,6 @@ class FileNameComplete(sublime_plugin.EventListener):
             self.committing_filename = False
             return True
         return False
-
-    def prev_has(self, view, string):
-        sel = view.sel()[0].a
-        return string in view.substr(sublime.Region(sel-1, sel))
-
-    def is_empty_string(self,view,sel):
-        string = view.substr(view.extract_scope(sel))
-        return len(string) < 3
 
     def fix_dir(self, path):
         if not '.' in path:
@@ -62,7 +53,9 @@ class FileNameComplete(sublime_plugin.EventListener):
         if view.extract_scope(sel-1).b - sel != 1:
             wild_pos = sel - view.extract_scope(sel-1).a - 1
             cur_path = cur_path[:wild_pos] + '*' + cur_path[wild_pos:]
-        cur_path += '*'
+        
+        if '\\' in view.substr(sel):
+            cur_path += '*'
 
         if is_proj_rel and os.path.isabs(cur_path):
             this_dir = sublime.load_settings(PACKAGE_SETTINGS).get("afn_proj_root")
@@ -70,13 +63,14 @@ class FileNameComplete(sublime_plugin.EventListener):
                 for f in sublime.active_window().folders():
                     if f in view.file_name():
                         this_dir = f
-        else:
-            this_dir = os.path.join(this_dir, cur_path)
+                        cur_path = cur_path[1:]
+
+        this_dir = os.path.join(this_dir + '/', cur_path)
 
         try:
             dir_files = []
             for f in glob.glob(this_dir):
-                if os.path.isfile(f): 
+                if os.path.isfile(f):
                     dir_files.append(os.path.basename(f))
                 else:
                     dir_files.extend(os.listdir(f))
