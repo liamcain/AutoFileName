@@ -62,7 +62,7 @@ class FileNameComplete(sublime_plugin.EventListener):
         if view.extract_scope(sel-1).b - sel != 1:
             wild_pos = sel - view.extract_scope(sel-1).a - 1
             cur_path = cur_path[:wild_pos] + '*' + cur_path[wild_pos:]
-            cur_path += '*'
+        cur_path += '*'
 
         if is_proj_rel and os.path.isabs(cur_path):
             this_dir = sublime.load_settings(PACKAGE_SETTINGS).get("afn_proj_root")
