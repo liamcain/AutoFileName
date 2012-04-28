@@ -2,15 +2,28 @@ import sublime
 import sublime_plugin
 import os
 import glob
+from afn_img_utils import get_image_size
 
 class AfnCommitCompCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         view = self.view
         sel = view.sel()[0].a
         if not 'string' in view.scope_name(sel): return
-        scope_end = view.extract_scope(sel-1).b - 1
-        region = sublime.Region(sel, scope_end)
+        scope_end = view.extract_scope(sel-1).b
+        region = sublime.Region(sel, scope_end-1)
         view.erase(edit, region)
+
+        path = view.substr(view.extract_scope(sel-1))
+        if path.startswith(("'","\"","(")):
+            path = path[1:-1]
+
+        if 'img' in view.substr(view.line(sel)) and path.endswith(('.png','.jpg','.jpeg','.gif')):
+            with open(path,'r') as r:
+                read_data = r.read()
+            dim = get_image_size(read_data)
+            string = ' width='+str(dim.get('width'))+ ' height='+str(dim.get('height'))
+            view.insert(edit, scope_end, string)
+
 
 class FileNameComplete(sublime_plugin.EventListener):
 
@@ -26,10 +39,16 @@ class FileNameComplete(sublime_plugin.EventListener):
             return True
         return False
 
-    def fix_dir(self, path):
-        if not '.' in path:
-            return path + '/'
-        return path
+    def fix_dir(self,dir,fn):
+        if not '.' in fn[1:]:
+            return fn + '/'
+        elif fn.endswith(('.png','.jpg','.jpeg','.gif')):
+            path = os.path.join(dir + '/', fn)
+            with open(path,'r') as r:
+                read_data = r.read()
+            dim = get_image_size(read_data)
+            return fn + '\t' + 'w:'+str(dim.get('width'))+" h:"+str(dim.get('height'))
+        return fn
 
     def on_query_completions(self, view, prefix, locations):
         completions = []
@@ -52,10 +71,7 @@ class FileNameComplete(sublime_plugin.EventListener):
 
         if view.extract_scope(sel-1).b - sel != 1:
             wild_pos = sel - view.extract_scope(sel-1).a - 1
-            cur_path = cur_path[:wild_pos] + '*' + cur_path[wild_pos:]
-        
-        if '\\' in view.substr(sel):
-            cur_path += '*'
+            cur_path = cur_path[:wild_pos] + '*' + cur_path[wild_pos:] + '*'
 
         if is_proj_rel and os.path.isabs(cur_path):
             this_dir = sublime.load_settings(PACKAGE_SETTINGS).get("afn_proj_root")
@@ -64,7 +80,6 @@ class FileNameComplete(sublime_plugin.EventListener):
                     if f in view.file_name():
                         this_dir = f
                         cur_path = cur_path[1:]
-
         this_dir = os.path.join(this_dir + '/', cur_path)
 
         try:
@@ -77,7 +92,7 @@ class FileNameComplete(sublime_plugin.EventListener):
 
             for d in list(set(dir_files)):
                 n = d.decode('utf-8')
-                completions.append((self.fix_dir(n), n))
+                completions.append((self.fix_dir(this_dir,n), n))
                 if completions:
                     self.committing_filename = True
             return completions
