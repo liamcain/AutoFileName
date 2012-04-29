@@ -29,16 +29,16 @@ class AfnCommitCompCommand(sublime_plugin.TextCommand):
             dim = get_image_size(read_data)
 
             if 'width' in view.substr(tag_scope):
-                reg = view.find('(?<=width\=)\d{1,5}', tag_scope.a)
-                view.replace(edit, reg, str(dim.get('width')))
+                reg = view.find('(?<=width\=)\s*\"\d{1,5}', tag_scope.a)
+                view.replace(edit, reg, '"'+str(dim.get('width')))
             else:
-                view.insert(edit, sel+1, ' width='+str(dim.get('width')))
+                view.insert(edit, sel+1, ' width="'+str(dim.get('width'))+'"')
 
             if 'height' in view.substr(tag_scope):
-                reg = view.find('(?<=height\=)\d{1,5}', tag_scope.a)
-                view.replace(edit, reg, str(dim.get('height')))
+                reg = view.find('(?<=height\=)\s*\"\d{1,5}', tag_scope.a)
+                view.replace(edit, reg, '"'+str(dim.get('height')))
             else:
-                view.insert(edit, sel+1, ' height='+str(dim.get('height')))
+                view.insert(edit, sel+1, ' height="'+str(dim.get('height'))+'"')
 
 
 class FileNameComplete(sublime_plugin.EventListener):
