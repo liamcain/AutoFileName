@@ -5,11 +5,14 @@ import glob
 from afn_img_utils import get_image_size
 
 class AfnCommitCompCommand(sublime_plugin.TextCommand):
+    this_dir = ''
+
     def run(self, edit):
         view = self.view
         sel = view.sel()[0].a
         if not 'string' in view.scope_name(sel): return
         scope_end = view.extract_scope(sel-1).b
+        tag_scope = view.extract_scope(sel+1)
         region = sublime.Region(sel, scope_end-1)
         view.erase(edit, region)
 
@@ -17,12 +20,25 @@ class AfnCommitCompCommand(sublime_plugin.TextCommand):
         if path.startswith(("'","\"","(")):
             path = path[1:-1]
 
-        if 'img' in view.substr(view.line(sel)) and path.endswith(('.png','.jpg','.jpeg','.gif')):
-            with open(path,'r') as r:
+        path = path[path.rfind('/'):]
+        full_path = self.this_dir + path
+
+        if 'img' in view.substr(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
+            with open(full_path,'r') as r:
                 read_data = r.read()
             dim = get_image_size(read_data)
-            string = ' width='+str(dim.get('width'))+ ' height='+str(dim.get('height'))
-            view.insert(edit, scope_end, string)
+
+            if 'width' in view.substr(tag_scope):
+                reg = view.find('(?<=width\=)\d{1,5}', tag_scope.a)
+                view.replace(edit, reg, str(dim.get('width')))
+            else:
+                view.insert(edit, sel+1, ' width='+str(dim.get('width')))
+
+            if 'height' in view.substr(tag_scope):
+                reg = view.find('(?<=height\=)\d{1,5}', tag_scope.a)
+                view.replace(edit, reg, str(dim.get('height')))
+            else:
+                view.insert(edit, sel+1, ' height='+str(dim.get('height')))
 
 
 class FileNameComplete(sublime_plugin.EventListener):
@@ -39,11 +55,11 @@ class FileNameComplete(sublime_plugin.EventListener):
             return True
         return False
 
-    def fix_dir(self,dir,fn):
+    def fix_dir(self,sdir,fn):
         if not '.' in fn[1:]:
             return fn + '/'
         elif fn.endswith(('.png','.jpg','.jpeg','.gif')):
-            path = os.path.join(dir + '/', fn)
+            path = os.path.join(sdir + '/', fn)
             with open(path,'r') as r:
                 read_data = r.read()
             dim = get_image_size(read_data)
@@ -95,6 +111,7 @@ class FileNameComplete(sublime_plugin.EventListener):
                 completions.append((self.fix_dir(this_dir,n), n))
                 if completions:
                     self.committing_filename = True
+                    AfnCommitCompCommand.this_dir = this_dir
             return completions
         except OSError:
             print "AutoFileName: could not find " + this_dir
