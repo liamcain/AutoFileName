@@ -1,0 +1,16 @@
+[
+	{ "keys": ["tab"], "command": "run_macro_file", "args": {"file": "Packages/AutoFileName/commit-and-trim.sublime-macro"}, 
+	"context":
+	  [
+	    { "key": "setting.auto_complete_commit_on_tab" },
+	    { "operand": true, "operator": "equal", "match_all": true, "key": "afn_commit-n-trim" }
+	  ]
+	},
+	{ "keys": ["enter"], "command": "run_macro_file", "args": {"file": "Packages/AutoFileName/commit-and-trim.sublime-macro"}, 
+	   "context":
+	 [
+	     { "key": "setting.auto_complete_commit_on_tab", "operator": "equal", "operand": false },
+	     { "operand": true, "operator": "equal", "match_all": true, "key": "afn_commit-n-trim" }
+	 ]
+	}
+]
