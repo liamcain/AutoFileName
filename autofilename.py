@@ -49,6 +49,14 @@ class FileNameComplete(sublime_plugin.EventListener):
         if key == "afn_commit-n-trim":
             return self.will_commit(view) == operand
 
+    def on_selection_modified(self,view):
+        sel = view.sel()[0].a
+        if 'string.end' in view.scope_name(sel):
+            if view.substr(sel-1) == '/' or len(view.extract_scope(sel)) < 3:
+                view.run_command('auto_complete', 
+                {'disable_auto_insert': True,
+                'next_completion_if_showing': False})
+
     def will_commit(self, view):
         if self.committing_filename:
             self.committing_filename = False
@@ -56,9 +64,7 @@ class FileNameComplete(sublime_plugin.EventListener):
         return False
 
     def fix_dir(self,sdir,fn):
-        if not '.' in fn[1:]:
-            return fn + '/'
-        elif fn.endswith(('.png','.jpg','.jpeg','.gif')):
+        if fn.endswith(('.png','.jpg','.jpeg','.gif')):
             path = os.path.join(sdir + '/', fn)
             with open(path,'r') as r:
                 read_data = r.read()
@@ -75,9 +81,14 @@ class FileNameComplete(sublime_plugin.EventListener):
         sel = view.sel()[0].a
 
         for x in view.find_all("[a-zA-Z]+"):
-                    backup.append(view.substr(x))
+            backup.append((view.substr(x),view.substr(x)))
 
         if not any(s in view.scope_name(sel) for s in valid_scopes):
+            return backup
+
+        if not view.file_name():
+            print 'AutoFileName: File not saved.'
+            backup.insert(0,('AutoFileName: File Not Saved',''))
             return backup
 
         this_dir = os.path.split(view.file_name())[0] + os.path.sep
@@ -108,6 +119,8 @@ class FileNameComplete(sublime_plugin.EventListener):
 
             for d in list(set(dir_files)):
                 n = d.decode('utf-8')
+                if not '.' in n[1:]:
+                    n += '/'
                 completions.append((self.fix_dir(this_dir,n), n))
                 if completions:
                     self.committing_filename = True
