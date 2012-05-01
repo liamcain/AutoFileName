@@ -7,6 +7,15 @@ from afn_img_utils import get_image_size
 class AfnCommitCompCommand(sublime_plugin.TextCommand):
     this_dir = ''
 
+    def insert_dimension(self,edit,dim,name,tag_scope):
+        view = self.view
+        sel = view.sel()[0].a
+        if name in view.substr(tag_scope):
+            reg = view.find('(?<=name\=)\s*\"\d{1,5}', tag_scope.a)
+            view.replace(edit, reg, '"'+str(dim.get(name)))
+        else:
+            view.insert(edit, sel+1, ' name="'+str(dim.get(name))+'"')
+
     def run(self, edit):
         view = self.view
         sel = view.sel()[0].a
@@ -16,7 +25,7 @@ class AfnCommitCompCommand(sublime_plugin.TextCommand):
         region = sublime.Region(sel, scope_end-1)
         view.erase(edit, region)
 
-        path = view.substr(view.extract_scope(sel-1))
+        path = view.substr(scope_end)
         if path.startswith(("'","\"","(")):
             path = path[1:-1]
 
@@ -28,17 +37,8 @@ class AfnCommitCompCommand(sublime_plugin.TextCommand):
                 read_data = r.read()
             dim = get_image_size(read_data)
 
-            if 'width' in view.substr(tag_scope):
-                reg = view.find('(?<=width\=)\s*\"\d{1,5}', tag_scope.a)
-                view.replace(edit, reg, '"'+str(dim.get('width')))
-            else:
-                view.insert(edit, sel+1, ' width="'+str(dim.get('width'))+'"')
-
-            if 'height' in view.substr(tag_scope):
-                reg = view.find('(?<=height\=)\s*\"\d{1,5}', tag_scope.a)
-                view.replace(edit, reg, '"'+str(dim.get('height')))
-            else:
-                view.insert(edit, sel+1, ' height="'+str(dim.get('height'))+'"')
+            self.insert_dimension(edit,dim,'width',tag_scope)
+            self.insert_dimension(edit,dim,'height',tag_scope)
 
 
 class FileNameComplete(sublime_plugin.EventListener):
@@ -49,9 +49,14 @@ class FileNameComplete(sublime_plugin.EventListener):
         if key == "afn_commit-n-trim":
             return self.will_commit(view) == operand
 
+    def scope(self,view,string):
+        sel = view.sel()[0].a
+        return string in view.scope_name(sel)
+
     def on_selection_modified(self,view):
         sel = view.sel()[0].a
-        if 'string.end' in view.scope_name(sel):
+        v = view
+        if self.scope(v,'string.end') or (self.scope(v,'.css') and ')' in view.substr(sel)):
             if view.substr(sel-1) == '/' or len(view.extract_scope(sel)) < 3:
                 view.run_command('auto_complete', 
                 {'disable_auto_insert': True,
@@ -72,41 +77,47 @@ class FileNameComplete(sublime_plugin.EventListener):
             return fn + '\t' + 'w:'+str(dim.get('width'))+" h:"+str(dim.get('height'))
         return fn
 
+    def get_cur_path(self,view,sel):
+        scope_contents = view.substr(view.extract_scope(sel-1))
+        cur_path = scope_contents.replace('\r\n', '\n').split('\n')[0]
+        if cur_path.startswith(("'","\"","(")):
+            return cur_path[1:-1]
+        return cur_path
+
     def on_query_completions(self, view, prefix, locations):
-        completions = []
+        SETTINGS = "autofilename.sublime-settings"
+        is_proj_rel = sublime.load_settings(SETTINGS).get("auto_file_name_use_project_root")
         valid_scopes = ["string", "css", "sass", "scss", "less"]
-        PACKAGE_SETTINGS = "autofilename.sublime-settings"
-        is_proj_rel = sublime.load_settings(PACKAGE_SETTINGS).get("auto_file_name_use_project_root")
-        backup = []
         sel = view.sel()[0].a
+        completions = []
+        backup = []
 
         for x in view.find_all("[a-zA-Z]+"):
             backup.append((view.substr(x),view.substr(x)))
 
         if not any(s in view.scope_name(sel) for s in valid_scopes):
-            return backup
+            return []
 
-        if not view.file_name():
-            print 'AutoFileName: File not saved.'
-            backup.insert(0,('AutoFileName: File Not Saved',''))
-            return backup
+        cur_path = self.get_cur_path(view, sel)
 
-        this_dir = os.path.split(view.file_name())[0] + os.path.sep
-        cur_path = view.substr(view.extract_scope(sel-1)).replace('\r\n', '\n').split('\n')[0]
-        if cur_path.startswith(("'","\"","(")):
-            cur_path = cur_path[1:-1]
-
-        if view.extract_scope(sel-1).b - sel != 1:
+        if view.extract_scope(sel-1).b - sel > 1:  # if the cursor is not at the end
             wild_pos = sel - view.extract_scope(sel-1).a - 1
             cur_path = cur_path[:wild_pos] + '*' + cur_path[wild_pos:] + '*'
 
         if is_proj_rel and os.path.isabs(cur_path):
-            this_dir = sublime.load_settings(PACKAGE_SETTINGS).get("afn_proj_root")
+            this_dir = sublime.load_settings(SETTINGS).get("afn_proj_root")
+            cur_path = cur_path[1:]
             if len(this_dir) < 2:
                 for f in sublime.active_window().folders():
                     if f in view.file_name():
                         this_dir = f
-                        cur_path = cur_path[1:]
+        else:
+            if not view.file_name():
+                print 'AutoFileName: File not saved.'
+                backup.insert(0,('AutoFileName: File Not Saved',''))
+                return backup
+            this_dir = os.path.split(view.file_name())[0]
+
         this_dir = os.path.join(this_dir + '/', cur_path)
 
         try:
