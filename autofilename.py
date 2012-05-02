@@ -14,7 +14,8 @@ class AfnCommitCompCommand(sublime_plugin.TextCommand):
             reg = view.find('(?<=name\=)\s*\"\d{1,5}', tag_scope.a)
             view.replace(edit, reg, '"'+str(dim.get(name)))
         else:
-            view.insert(edit, sel+1, ' name="'+str(dim.get(name))+'"')
+            dimension = str(dim.get(name))
+            view.insert(edit, sel+1, ' '+name+'="'+dimension+'"')
 
     def run(self, edit):
         view = self.view
@@ -25,18 +26,16 @@ class AfnCommitCompCommand(sublime_plugin.TextCommand):
         region = sublime.Region(sel, scope_end-1)
         view.erase(edit, region)
 
-        path = view.substr(scope_end)
+        path = view.substr(view.extract_scope(sel-1))
         if path.startswith(("'","\"","(")):
             path = path[1:-1]
 
         path = path[path.rfind('/'):]
         full_path = self.this_dir + path
-
-        if 'img' in view.substr(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
+        if '<img' in view.substr(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
             with open(full_path,'r') as r:
                 read_data = r.read()
             dim = get_image_size(read_data)
-
             self.insert_dimension(edit,dim,'width',tag_scope)
             self.insert_dimension(edit,dim,'height',tag_scope)
 
