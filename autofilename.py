@@ -117,7 +117,7 @@ class FileNameComplete(sublime_plugin.EventListener):
                 return backup
             this_dir = os.path.split(view.file_name())[0]
 
-        this_dir = os.path.join(this_dir + '/', cur_path)
+        this_dir = os.path.join(this_dir, cur_path)
 
         try:
             dir_files = []
@@ -129,8 +129,8 @@ class FileNameComplete(sublime_plugin.EventListener):
 
             for d in list(set(dir_files)):
                 n = d.decode('utf-8')
-                if not '.' in n[1:]:
-                    n += '/'
+                if n.startswith('.'): continue
+                if not '.' in n: n += '/'
                 completions.append((self.fix_dir(this_dir,n), n))
                 if completions:
                     self.committing_filename = True
