@@ -11,7 +11,7 @@ class AfnCommitCompCommand(sublime_plugin.TextCommand):
         view = self.view
         sel = view.sel()[0].a
         if name in view.substr(tag_scope):
-            reg = view.find('(?<=name\=)\s*\"\d{1,5}', tag_scope.a)
+            reg = view.find('(?<='+name+'\=)\s*\"\d{1,5}', tag_scope.a)
             view.replace(edit, reg, '"'+str(dim.get(name)))
         else:
             dimension = str(dim.get(name))
@@ -33,7 +33,7 @@ class AfnCommitCompCommand(sublime_plugin.TextCommand):
         path = path[path.rfind('/'):]
         full_path = self.this_dir + path
         if '<img' in view.substr(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
-            with open(full_path,'r') as r:
+            with open(full_path,'rb') as r:
                 read_data = r.read()
             dim = get_image_size(read_data)
             self.insert_dimension(edit,dim,'width',tag_scope)
@@ -70,7 +70,7 @@ class FileNameComplete(sublime_plugin.EventListener):
     def fix_dir(self,sdir,fn):
         if fn.endswith(('.png','.jpg','.jpeg','.gif')):
             path = os.path.join(sdir + '/', fn)
-            with open(path,'r') as r:
+            with open(path,'rb') as r:
                 read_data = r.read()
             dim = get_image_size(read_data)
             return fn + '\t' + 'w:'+str(dim.get('width'))+" h:"+str(dim.get('height'))
