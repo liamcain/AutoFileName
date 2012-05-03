@@ -21,9 +21,9 @@ class AfnCommitCompCommand(sublime_plugin.TextCommand):
         view = self.view
         sel = view.sel()[0].a
         if not 'string' in view.scope_name(sel): return
-        scope_end = view.extract_scope(sel-1).b
-        tag_scope = view.extract_scope(sel+1)
-        region = sublime.Region(sel, scope_end-1)
+        scope = view.extract_scope(sel-1)
+        tag_scope = view.extract_scope(scope.a-1)
+        region = sublime.Region(sel, scope.b-1)
         view.erase(edit, region)
 
         path = view.substr(view.extract_scope(sel-1))
