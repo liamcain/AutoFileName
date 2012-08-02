@@ -47,9 +47,21 @@ class ReloadAutoCompleteCommand(sublime_plugin.TextCommand):
                          'next_completion_if_showing': False})
 
     def run(self,edit):
+        # self.view.run_command('hide_auto_complete')
+        # self.view.run_command('left_delete')
+        # sublime.set_timeout(self.complete, 50)
+        view = self.view
+        view.run_command('left_delete')
+        sel = view.sel()[0].a
         self.view.run_command('hide_auto_complete')
-        self.view.run_command('left_delete')
-        sublime.set_timeout(self.complete, 50)
+
+        scope = view.extract_scope(sel-1)
+        scope_text = view.substr(scope)
+        slash_pos = scope_text[:sel - scope.a].rfind('/')
+        slash_pos += 1 if slash_pos < 0 else 0
+
+        region = sublime.Region(scope.a+slash_pos+1,sel)
+        view.sel().add(region)
 
 class FileNameComplete(sublime_plugin.EventListener):
     committing_filename = False
