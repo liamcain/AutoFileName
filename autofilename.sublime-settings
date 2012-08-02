@@ -3,9 +3,13 @@
 	//Changing this setting allows for absolute paths on a project level
 	//This is useful for web designers and developers who want to use the
 	//root of their site.
-	"auto_file_name_use_project_root": false,
+	"afn_use_project_root": true,
 
 	// Override the project root.  Will only work 
 	// if "auto_file_name_use_project_root" is true.
-	"afn_proj_root": ""
+	"afn_proj_root": "",
+
+	"afn_valid_scopes":["string","css","sass","less","scss"],
+
+	"afn_insert_dimensions": true
 }

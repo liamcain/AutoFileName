@@ -1,16 +1,24 @@
 [
-	{ "keys": ["tab"], "command": "run_macro_file", "args": {"file": "Packages/AutoFileName/commit-and-trim.sublime-macro"}, 
+	{ "keys": ["tab"], "command": "insert_dimensions", 
 	"context":
 	  [
 	    { "key": "setting.auto_complete_commit_on_tab" },
-	    { "operand": true, "operator": "equal", "match_all": true, "key": "afn_commit-n-trim" }
+	    { "key": "auto_complete_visible", "operator": "equal", "operand": true },
+	    { "key": "afn_insert_dimensions", "operator": "equal", "operand": true }
 	  ]
 	},
-	{ "keys": ["enter"], "command": "run_macro_file", "args": {"file": "Packages/AutoFileName/commit-and-trim.sublime-macro"}, 
+	{ "keys": ["enter"], "command": "insert_dimensions", 
 	   "context":
 	 [
 	     { "key": "setting.auto_complete_commit_on_tab", "operator": "equal", "operand": false },
-	     { "operand": true, "operator": "equal", "match_all": true, "key": "afn_commit-n-trim" }
+	     { "key": "auto_complete_visible", "operator": "equal", "operand": true },
+	     { "key": "afn_insert_dimensions", "operator": "equal", "operand": true }
+	 ]
+	},
+	{ "keys": ["backspace"], "command": "reload_auto_complete", 
+	   "context":
+	 [
+	     { "key": "afn_deleting_slash", "operator": "equal", "operand": true }
 	 ]
 	}
 ]
