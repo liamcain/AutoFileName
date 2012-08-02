@@ -31,8 +31,6 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
         path = path[path.rfind('/'):] if '/' in path else ''
         full_path = self.this_dir + path
 
-        print full_path
-
         if '<img' in view.substr(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
             with open(full_path,'rb') as r:
                 read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
@@ -72,8 +70,7 @@ class FileNameComplete(sublime_plugin.EventListener):
 
     def on_query_context(self, view, key, operator, operand, match_all):
         if key == "afn_insert_dimensions":
-            settings = sublime.load_settings("autofilename.sublime-settings")
-            return settings.get('afn_insert_dimensions') == operand
+            return view.settings().get('afn_insert_dimensions') == operand
         if key == "afn_deleting_slash":
             sel = view.sel()[0]
             valid = sel.empty() and view.substr(sel.a-1) == '/'
@@ -129,9 +126,8 @@ class FileNameComplete(sublime_plugin.EventListener):
         return cur_path[:cur_path.rfind('/')] if '/' in cur_path else ''
 
     def on_query_completions(self, view, prefix, locations):
-        settings = sublime.load_settings("autofilename.sublime-settings")
-        is_proj_rel = settings.get("afn_use_project_root")
-        valid_scopes = settings.get("afn_valid_scopes")
+        is_proj_rel = view.settings().get("afn_use_project_root")
+        valid_scopes = view.settings().get("afn_valid_scopes")
         sel = view.sel()[0].a
         completions = []
         backup = []
@@ -145,7 +141,7 @@ class FileNameComplete(sublime_plugin.EventListener):
         cur_path = self.get_cur_path(view, sel)
 
         if is_proj_rel:
-            this_dir = settings.get("afn_proj_root")
+            this_dir = view.settings().get("afn_proj_root")
             if len(this_dir) < 2:
                 for f in sublime.active_window().folders():
                     if f in view.file_name():
