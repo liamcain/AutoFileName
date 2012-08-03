@@ -86,6 +86,7 @@ class FileNameComplete(sublime_plugin.EventListener):
 
     def on_selection_modified(self,view):
         sel = view.sel()[0]
+        if view.is_loading(): return
         if self.at_path_end(view):
             if view.substr(sel.a-1) == '/' or len(view.extract_scope(sel.a)) < 3:
                 view.run_command('auto_complete',
@@ -94,6 +95,7 @@ class FileNameComplete(sublime_plugin.EventListener):
 
     def on_modified(self,view):
         sel = view.sel()[0]
+        if view.is_loading(): return
         v = view
         if self.size > view.size():
             if self.at_path_end(view):
