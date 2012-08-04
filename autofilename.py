@@ -39,16 +39,11 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
             self.insert_dimension(edit,h,'height',tag_scope)
 
 class ReloadAutoCompleteCommand(sublime_plugin.TextCommand):
-    def complete(self):
-        self.view.run_command('auto_complete',
-                        {'disable_auto_insert': True,
-                         'next_completion_if_showing': False})
-
     def run(self,edit):
         view = self.view
+        view.run_command('hide_auto_complete')
         view.run_command('left_delete')
         sel = view.sel()[0].a
-        view.run_command('hide_auto_complete')
 
         scope = view.extract_scope(sel-1)
         scope_text = view.substr(scope)
@@ -66,7 +61,7 @@ class FileNameComplete(sublime_plugin.EventListener):
 
     def on_query_context(self, view, key, operator, operand, match_all):
         if key == "afn_insert_dimensions":
-            return view.settings().get('afn_insert_dimensions') == operand
+            return self.get_setting('afn_insert_dimensions',view) == operand
         if key == "afn_deleting_slash":
             sel = view.sel()[0]
             valid = sel.empty() and view.substr(sel.a-1) == '/'
@@ -83,24 +78,25 @@ class FileNameComplete(sublime_plugin.EventListener):
 
     def on_selection_modified(self,view):
         sel = view.sel()[0]
-        if self.at_path_end(view):
+        if sel.empty() and self.at_path_end(view):
             if view.substr(sel.a-1) == '/' or len(view.extract_scope(sel.a)) < 3:
                 view.run_command('auto_complete',
                 {'disable_auto_insert': True,
                 'next_completion_if_showing': False})
 
-    def on_modified(self,view):
+    def on_modifsied(self,view):
+        if not view.sel(): return
         sel = view.sel()[0]
-        if self.size > view.size():
+        if sel.empty() and self.size > view.size():
             if self.at_path_end(view):
                 if view.substr(sel.a-1) == '/':
                     view.run_command("hide_auto_complete")
-                    sublime.set_timeout(self.complete, 50)
+                    sublime.set_timeout(self.complete(view), 50)
                     
         self.size = view.size()
 
-    def complete(self):
-        self.view.run_command('auto_complete',
+    def complete(self,view):
+        view.run_command('auto_complete',
                         {'disable_auto_insert': True,
                          'next_completion_if_showing': False})
 
@@ -119,7 +115,7 @@ class FileNameComplete(sublime_plugin.EventListener):
         if cur_path.startswith(("'","\"","(")):
             cur_path = cur_path[1:-1]
 
-        return cur_path[:cur_path.rfind('/')] if '/' in cur_path else ''
+        return cur_path[:cur_path.rfind('/')+1] if '/' in cur_path else ''
 
     def get_setting(self,string,view=None):
         if view and view.settings().get(string):
@@ -164,4 +160,4 @@ class FileNameComplete(sublime_plugin.EventListener):
             return completions
         except OSError:
             print "AutoFileName: could not find " + this_dir
-            return backup
+            return
