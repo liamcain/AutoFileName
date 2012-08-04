@@ -54,8 +54,6 @@ class ReloadAutoCompleteCommand(sublime_plugin.TextCommand):
         view.sel().add(region)
 
 class FileNameComplete(sublime_plugin.EventListener):
-    size = 0
-
     def on_activated(self,view):
         self.size = view.size()
 
@@ -83,22 +81,6 @@ class FileNameComplete(sublime_plugin.EventListener):
                 view.run_command('auto_complete',
                 {'disable_auto_insert': True,
                 'next_completion_if_showing': False})
-
-    def on_modifsied(self,view):
-        if not view.sel(): return
-        sel = view.sel()[0]
-        if sel.empty() and self.size > view.size():
-            if self.at_path_end(view):
-                if view.substr(sel.a-1) == '/':
-                    view.run_command("hide_auto_complete")
-                    sublime.set_timeout(self.complete(view), 50)
-                    
-        self.size = view.size()
-
-    def complete(self,view):
-        view.run_command('auto_complete',
-                        {'disable_auto_insert': True,
-                         'next_completion_if_showing': False})
 
     def fix_dir(self,sdir,fn):
         if fn.endswith(('.png','.jpg','.jpeg','.gif')):
