@@ -5,11 +5,15 @@
 	//root of their site.
 	"afn_use_project_root": false,
 
-	// Override the project root.  Will only work 
+	// Override the project root. Will only work 
 	// if "auto_file_name_use_project_root" is true.
 	"afn_proj_root": "",
 
+	// Specify which scopes will trigger AutoFileName
 	"afn_valid_scopes":["string","css","sass","less","scss"],
 
+	// Whether or not AutoFileName should insert the width
+	// and height dimensions after inserting an image into
+	// an image tag
 	"afn_insert_dimensions": true
 }

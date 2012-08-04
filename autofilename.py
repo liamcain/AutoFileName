@@ -45,13 +45,10 @@ class ReloadAutoCompleteCommand(sublime_plugin.TextCommand):
                          'next_completion_if_showing': False})
 
     def run(self,edit):
-        # self.view.run_command('hide_auto_complete')
-        # self.view.run_command('left_delete')
-        # sublime.set_timeout(self.complete, 50)
         view = self.view
         view.run_command('left_delete')
         sel = view.sel()[0].a
-        self.view.run_command('hide_auto_complete')
+        view.run_command('hide_auto_complete')
 
         scope = view.extract_scope(sel-1)
         scope_text = view.substr(scope)
@@ -62,11 +59,10 @@ class ReloadAutoCompleteCommand(sublime_plugin.TextCommand):
         view.sel().add(region)
 
 class FileNameComplete(sublime_plugin.EventListener):
-    committing_filename = False
+    size = 0
 
     def on_activated(self,view):
         self.size = view.size()
-        self.view = view
 
     def on_query_context(self, view, key, operator, operand, match_all):
         if key == "afn_insert_dimensions":
@@ -76,13 +72,14 @@ class FileNameComplete(sublime_plugin.EventListener):
             valid = sel.empty() and view.substr(sel.a-1) == '/'
             return valid == operand
 
-    def scope(self,string):
-        sel = self.view.sel()[0].a
-        return string in self.view.scope_name(sel)
-
     def at_path_end(self,view):
         sel = view.sel()[0]
-        return (sel.empty() and self.scope('string.end')) or (self.scope('.css') and view.substr(sel.a) == ')')
+        name = view.scope_name(sel.a)
+        if sel.empty() and 'string.end' in name:
+            return True
+        if '.css' in name and view.substr(sel.a) == ')':
+            return True
+        return False
 
     def on_selection_modified(self,view):
         sel = view.sel()[0]
@@ -94,7 +91,6 @@ class FileNameComplete(sublime_plugin.EventListener):
 
     def on_modified(self,view):
         sel = view.sel()[0]
-        v = view
         if self.size > view.size():
             if self.at_path_end(view):
                 if view.substr(sel.a-1) == '/':
@@ -125,15 +121,17 @@ class FileNameComplete(sublime_plugin.EventListener):
 
         return cur_path[:cur_path.rfind('/')] if '/' in cur_path else ''
 
+    def get_setting(self,string,view=None):
+        if view and view.settings().get(string):
+            return view.settings().get(string)
+        else:
+            return sublime.load_settings('autofilename.sublime-settings').get(string)
+
     def on_query_completions(self, view, prefix, locations):
-        is_proj_rel = view.settings().get("afn_use_project_root")
-        valid_scopes = view.settings().get("afn_valid_scopes")
+        is_proj_rel = self.get_setting('afn_use_project_root',view)
+        valid_scopes = self.get_setting('afn_valid_scopes',view)
         sel = view.sel()[0].a
         completions = []
-        backup = []
-
-        for x in view.find_all("[a-zA-Z]+"):
-            backup.append((view.substr(x),view.substr(x)))
 
         if not any(s in view.scope_name(sel) for s in valid_scopes):
             return []
@@ -141,15 +139,14 @@ class FileNameComplete(sublime_plugin.EventListener):
         cur_path = self.get_cur_path(view, sel)
 
         if is_proj_rel:
-            this_dir = view.settings().get("afn_proj_root")
+            this_dir = self.get_setting('afn_proj_root',view)
             if len(this_dir) < 2:
                 for f in sublime.active_window().folders():
                     if f in view.file_name():
                         this_dir = f
         else:
             if not view.file_name():
-                backup.insert(0,('AutoFileName: File Not Saved',''))
-                return backup
+                return
             this_dir = os.path.split(view.file_name())[0]
 
         this_dir = os.path.join(this_dir, cur_path)
