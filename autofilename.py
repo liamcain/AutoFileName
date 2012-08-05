@@ -75,6 +75,8 @@ class FileNameComplete(sublime_plugin.EventListener):
         return False
 
     def on_selection_modified(self,view):
+        if view.get_window() == None:
+            return;
         sel = view.sel()[0]
         if sel.empty() and self.at_path_end(view):
             if view.substr(sel.a-1) == '/' or len(view.extract_scope(sel.a)) < 3:
