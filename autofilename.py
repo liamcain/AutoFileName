@@ -62,7 +62,7 @@ class FileNameComplete(sublime_plugin.EventListener):
             return self.get_setting('afn_insert_dimensions',view) == operand
         if key == "afn_deleting_slash":
             sel = view.sel()[0]
-            valid = sel.empty() and view.substr(sel.a-1) == '/'
+            valid = self.at_path_end(view) and sel.empty() and view.substr(sel.a-1) == '/'
             return valid == operand
 
     def at_path_end(self,view):
