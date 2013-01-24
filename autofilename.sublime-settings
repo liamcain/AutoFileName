@@ -15,5 +15,10 @@
 	// Whether or not AutoFileName should insert the width
 	// and height dimensions after inserting an image into
 	// an image tag
-	"afn_insert_dimensions": true
+	"afn_insert_dimensions": true,
+
+	// If afn_insert_dimensions is true, by default, AutoFileName
+	// will insert height="" than width="". Setting this to true
+	// will switch the order in which they are inserted.
+	"afn_insert_width_first": false
 }

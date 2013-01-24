@@ -16,6 +16,12 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
             dimension = str(dim)
             view.insert(edit, sel+1, ' '+name+'="'+dimension+'"')
 
+    def get_setting(self,string,view=None):
+        if view and view.settings().get(string):
+            return view.settings().get(string)
+        else:
+            return sublime.load_settings('autofilename.sublime-settings').get(string)
+
     def run(self, edit):
         view = self.view
         view.run_command("commit_completion")
@@ -35,8 +41,12 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
             with open(full_path,'rb') as r:
                 read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
             con_type, w, h = getImageInfo(read_data)
-            self.insert_dimension(edit,w,'width',tag_scope)
-            self.insert_dimension(edit,h,'height',tag_scope)
+            if self.get_setting('afn_insert_width_first',view):
+                self.insert_dimension(edit,h,'height',tag_scope)
+                self.insert_dimension(edit,w,'width',tag_scope)
+            else:
+                self.insert_dimension(edit,w,'width',tag_scope)
+                self.insert_dimension(edit,h,'height',tag_scope)
 
 class ReloadAutoCompleteCommand(sublime_plugin.TextCommand):
     def run(self,edit):
