@@ -1,7 +1,7 @@
 import sublime
 import sublime_plugin
 import os
-from getimageinfo import getImageInfo
+from .getimageinfo import getImageInfo
 
 class InsertDimensionsCommand(sublime_plugin.TextCommand):
     this_dir = ''
@@ -145,13 +145,12 @@ class FileNameComplete(sublime_plugin.EventListener):
             dir_files = os.listdir(this_dir)
 
             for d in dir_files:
-                n = d.decode('utf-8')
-                if n.startswith('.'): continue
-                if not '.' in n: n += '/'
-                completions.append((self.fix_dir(this_dir,n), n))
+                if d.startswith('.'): continue
+                if not '.' in d: d += '/'
+                completions.append((self.fix_dir(this_dir,d), d))
             if completions:
                 InsertDimensionsCommand.this_dir = this_dir
             return completions
         except OSError:
-            print "AutoFileName: could not find " + this_dir
+            print("AutoFileName: could not find " + this_dir)
             return
