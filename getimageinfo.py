@@ -1,4 +1,4 @@
-import StringIO
+from io import StringIO
 import struct
 
 def getImageInfo(data):
