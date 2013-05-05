@@ -1,7 +1,7 @@
 import sublime
 import sublime_plugin
 import os
-from getimageinfo import getImageInfo
+from .getimageinfo import getImageInfo
 
 class InsertDimensionsCommand(sublime_plugin.TextCommand):
     this_dir = ''
@@ -39,8 +39,8 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
 
         if '<img' in view.substr(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
             with open(full_path,'rb') as r:
-                read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
-            con_type, w, h = getImageInfo(read_data)
+                read_data = r.read() # if path.endswith(('.jpg','.jpeg')) else r.read(24)
+            con_type, w, h = getImageInfo(read_data.contentBinary())
             if self.get_setting('afn_insert_width_first',view):
                 self.insert_dimension(edit,h,'height',tag_scope)
                 self.insert_dimension(edit,w,'width',tag_scope)
@@ -98,7 +98,7 @@ class FileNameComplete(sublime_plugin.EventListener):
         if fn.endswith(('.png','.jpg','.jpeg','.gif')):
             path = os.path.join(sdir, fn)
             with open(path,'rb') as r:
-                read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
+                read_data = r.read() # if path.endswith(('.jpg','.jpeg')) else r.read(24)
             con_type, w, h = getImageInfo(read_data)
             return fn+'\t'+'w:'+ str(w) +" h:" + str(h)
         return fn
@@ -145,13 +145,12 @@ class FileNameComplete(sublime_plugin.EventListener):
             dir_files = os.listdir(this_dir)
 
             for d in dir_files:
-                n = d.decode('utf-8')
-                if n.startswith('.'): continue
-                if not '.' in n: n += '/'
-                completions.append((self.fix_dir(this_dir,n), n))
+                if d.startswith('.'): continue
+                if not '.' in d: d += '/'
+                completions.append((self.fix_dir(this_dir,d), d))
             if completions:
                 InsertDimensionsCommand.this_dir = this_dir
             return completions
         except OSError:
-            print "AutoFileName: could not find " + this_dir
+            print("AutoFileName: could not find " + this_dir)
             return
