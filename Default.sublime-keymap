@@ -1,5 +1,5 @@
 [
-	{ "keys": ["tab"], "command": "insert_dimensions", 
+	{ "keys": ["tab"], "command": "insert_dimensions",
 	"context":
 	  [
 	    { "key": "setting.auto_complete_commit_on_tab" },

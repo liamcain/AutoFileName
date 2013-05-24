@@ -3,6 +3,48 @@ import sublime_plugin
 import os
 from .getimageinfo import getImageInfo
 
+class AfnShowFilenames(sublime_plugin.TextCommand):
+    def run(self, edit):
+        FileNameComplete.is_active = True 
+        self.view.run_command('auto_complete',
+                {'disable_auto_insert': True,
+                'next_completion_if_showing': False})
+
+class AfnSettingsPanel(sublime_plugin.WindowCommand):
+    def run(self):
+        use_pr = '✗ Stop using project root' if self.get_setting('afn_use_project_root') else '✓ Use Project Root'
+        use_dim = '✗ Disable HTML Image Dimension insertion' if self.get_setting('afn_insert_dimensions') else '✓ Auto-insert Image Dimensions in HTML'
+        p_root = self.get_setting('afn_proj_root')
+
+        menu = [
+                [use_pr, p_root],
+                [use_dim, '<img src="_path_" width = "x" height = "y" >']
+               ]
+        self.window.show_quick_panel(menu, self.on_done)
+
+    def on_done(self, value):
+        settings = sublime.load_settings('autofilename.sublime-settings')
+        if value == 0:
+            use_pr = settings.get('afn_use_project_root')
+            settings.set('afn_use_project_root', not use_pr)
+        if value == 1:
+            use_dim = settings.get('afn_use_project_root')
+            settings.set('afn_use_project_root', not use_dim)
+
+    def get_setting(self,string,view=None):
+        if view and view.settings().get(string):
+            return view.settings().get(string)
+        else:
+            return sublime.load_settings('autofilename.sublime-settings').get(string)
+
+# Used to remove the / or \ when autocompleting a Windows drive (eg. /C:/path)
+class AfnDeletePrefixedSlash(sublime_plugin.TextCommand):
+    def run(self, edit):
+        sel = self.view.sel()[0].a
+        reg = sublime.Region(sel-4,sel-3)
+        self.view.erase(edit, reg)
+
+# inserts width and height dimensions into img tags. HTML only
 class InsertDimensionsCommand(sublime_plugin.TextCommand):
     this_dir = ''
 
@@ -34,13 +76,13 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
         if path.startswith(("'","\"","(")):
             path = path[1:-1]
 
-        path = path[path.rfind('/'):] if '/' in path else ''
+        path = path[path.rfind(FileNameComplete.sep):] if FileNameComplete.sep in path else path
         full_path = self.this_dir + path
 
         if '<img' in view.substr(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
             with open(full_path,'rb') as r:
                 read_data = r.read() # if path.endswith(('.jpg','.jpeg')) else r.read(24)
-            con_type, w, h = getImageInfo(read_data.contentBinary())
+            con_type, w, h = getImageInfo(read_data)
             if self.get_setting('afn_insert_width_first',view):
                 self.insert_dimension(edit,h,'height',tag_scope)
                 self.insert_dimension(edit,w,'width',tag_scope)
@@ -48,6 +90,7 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
                 self.insert_dimension(edit,w,'width',tag_scope)
                 self.insert_dimension(edit,h,'height',tag_scope)
 
+# When backspacing through a path, selects the previous path component
 class ReloadAutoCompleteCommand(sublime_plugin.TextCommand):
     def run(self,edit):
         view = self.view
@@ -57,23 +100,32 @@ class ReloadAutoCompleteCommand(sublime_plugin.TextCommand):
 
         scope = view.extract_scope(sel-1)
         scope_text = view.substr(scope)
-        slash_pos = scope_text[:sel - scope.a].rfind('/')
+        slash_pos = scope_text[:sel - scope.a].rfind(FileNameComplete.sep)
         slash_pos += 1 if slash_pos < 0 else 0
 
         region = sublime.Region(scope.a+slash_pos+1,sel)
         view.sel().add(region)
 
+
 class FileNameComplete(sublime_plugin.EventListener):
     def on_activated(self,view):
-        self.size = view.size()
+        self.showing_win_drives = False
+        FileNameComplete.is_active = False
+        FileNameComplete.sep = '/'
+
+    def get_drives(self):
+    # Search through valid drive names and see if they exist. (stolen from Facelessuser)
+        return [[d+":"+FileNameComplete.sep, d+":"+FileNameComplete.sep] for d in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if os.path.exists(d + ":")]
 
     def on_query_context(self, view, key, operator, operand, match_all):
         if key == "afn_insert_dimensions":
             return self.get_setting('afn_insert_dimensions',view) == operand
-        if key == "afn_deleting_slash":
+        if key == "afn_deleting_slash":  # for reloading autocomplete
             sel = view.sel()[0]
-            valid = self.at_path_end(view) and sel.empty() and view.substr(sel.a-1) == '/'
+            valid = self.at_path_end(view) and sel.empty() and view.substr(sel.a-1) == FileNameComplete.sep
             return valid == operand
+        if key == "afn_use_keybinding":
+            return self.get_setting('afn_use_keybinding',view) == operand
 
     def at_path_end(self,view):
         sel = view.sel()[0]
@@ -84,15 +136,30 @@ class FileNameComplete(sublime_plugin.EventListener):
             return True
         return False
 
+    def on_modified(self, view):
+        sel = view.sel()[0].a
+        txt = view.substr(sublime.Region(sel-4,sel-3))
+        if (self.showing_win_drives and txt == FileNameComplete.sep):
+            self.showing_win_drives = False
+            view.run_command('afn_delete_prefixed_slash')
+
     def on_selection_modified(self,view):
         if not view.window():
             return
         sel = view.sel()[0]
         if sel.empty() and self.at_path_end(view):
-            if view.substr(sel.a-1) == '/' or len(view.extract_scope(sel.a)) < 3:
+            scope_contents = view.substr(view.extract_scope(sel.a-1))
+            p = scope_contents.replace('\r\n', '\n').split('\n')[0]
+            if('\\' in p and not '/' in p):
+                FileNameComplete.sep = '\\'
+            else:
+                FileNameComplete.sep = '/'
+            if view.substr(sel.a-1) == FileNameComplete.sep or len(view.extract_scope(sel.a)) < 3:
                 view.run_command('auto_complete',
                 {'disable_auto_insert': True,
                 'next_completion_if_showing': False})
+        else:
+            FileNameComplete.is_active = False
 
     def fix_dir(self,sdir,fn):
         if fn.endswith(('.png','.jpg','.jpeg','.gif')):
@@ -104,12 +171,12 @@ class FileNameComplete(sublime_plugin.EventListener):
         return fn
 
     def get_cur_path(self,view,sel):
-        scope_contents = view.substr(view.extract_scope(sel-1))
+        scope_contents = view.substr(view.extract_scope(sel-1)).strip()
         cur_path = scope_contents.replace('\r\n', '\n').split('\n')[0]
         if cur_path.startswith(("'","\"","(")):
             cur_path = cur_path[1:-1]
 
-        return cur_path[:cur_path.rfind('/')+1] if '/' in cur_path else ''
+        return cur_path[:cur_path.rfind(FileNameComplete.sep)+1] if FileNameComplete.sep in cur_path else ''
 
     def get_setting(self,string,view=None):
         if view and view.settings().get(string):
@@ -120,33 +187,44 @@ class FileNameComplete(sublime_plugin.EventListener):
     def on_query_completions(self, view, prefix, locations):
         is_proj_rel = self.get_setting('afn_use_project_root',view)
         valid_scopes = self.get_setting('afn_valid_scopes',view)
+        uses_keybinding = self.get_setting('afn_use_keybinding', view)
+
         sel = view.sel()[0].a
         completions = []
 
+        if uses_keybinding and not FileNameComplete.is_active:
+            return
+
         if not any(s in view.scope_name(sel) for s in valid_scopes):
-            return []
+            return
 
         cur_path = self.get_cur_path(view, sel)
 
-        if is_proj_rel:
-            this_dir = self.get_setting('afn_proj_root',view)
-            if len(this_dir) < 2:
+        if is_proj_rel and cur_path.startswith('/') or cur_path.startswith('\\'):
+            proot = self.get_setting('afn_proj_root', view)
+            if proot:
+                cur_path = os.path.join(proot, cur_path[1:])
+            else:
                 for f in sublime.active_window().folders():
                     if f in view.file_name():
-                        this_dir = f
+                        cur_path = f
         else:
             if not view.file_name():
                 return
-            this_dir = os.path.split(view.file_name())[0]
+        this_dir = os.path.split(view.file_name())[0]
 
         this_dir = os.path.join(this_dir, cur_path)
 
         try:
+            if sublime.platform() == "windows" and len(view.extract_scope(sel)) < 4 and os.path.isabs(cur_path):
+                self.showing_win_drives = True
+                return self.get_drives()
+            self.showing_win_drives = False
             dir_files = os.listdir(this_dir)
 
             for d in dir_files:
                 if d.startswith('.'): continue
-                if not '.' in d: d += '/'
+                if not '.' in d: d += FileNameComplete.sep
                 completions.append((self.fix_dir(this_dir,d), d))
             if completions:
                 InsertDimensionsCommand.this_dir = this_dir
