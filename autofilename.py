@@ -122,6 +122,9 @@ class FileNameComplete(sublime_plugin.EventListener):
         valid_scopes = self.get_setting('afn_valid_scopes',view)
         sel = view.sel()[0].a
         completions = []
+        
+        if "string.regexp.js" in view.scope_name(sel):
+            return []
 
         if not any(s in view.scope_name(sel) for s in valid_scopes):
             return []
