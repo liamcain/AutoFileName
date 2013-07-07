@@ -18,6 +18,9 @@
 	// Specify which scopes will trigger AutoFileName
 	"afn_valid_scopes":["string","css","sass","less","scss"],
 
+	// BlackList specific scopes
+	"afn_blacklist_scopes":["string.regexp.js"],
+
 	// Whether or not AutoFileName should insert the width
 	// and height dimensions after inserting an image into
 	// an image tag

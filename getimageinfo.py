@@ -23,25 +23,21 @@ def getImageInfo(data):
     # and finally the 4-byte width, height
     elif ((size >= 24) and data[:8] == b'\211PNG\r\n\032\n'
           and (data[12:16] == b'IHDR')):
-        content_type = 'image/png'
         w, h = struct.unpack(">LL", data[16:24])
         width = int(w)
         height = int(h)
 
     # Maybe this is for an older PNG version.
     elif (size >= 16) and data[:8] == b'\211PNG\r\n\032\n':
-        print("we have a png2")
         # Check to see if we have the right content type
-        content_type = 'image/png'
         w, h = struct.unpack(">LL", data[8:16])
         width = int(w)
         height = int(h)
 
     # handle JPEGs
-    # Can't get this method to work.
     # elif (size >= 2) and data[:2] == b'\377\330':
-    #     content_type = 'image/jpeg'
     #     jpeg = io.StringIO(olddata)
+    #     print(bytes(ord(jpeg.read(1))))
     #     jpeg.read(2)
     #     b = jpeg.read(1)
     #     try:
@@ -62,4 +58,4 @@ def getImageInfo(data):
     #     except ValueError:
     #         pass
 
-    return content_type, width, height
+    return width, height

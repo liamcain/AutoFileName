@@ -81,8 +81,8 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
 
         if '<img' in view.substr(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
             with open(full_path,'rb') as r:
-                read_data = r.read() # if path.endswith(('.jpg','.jpeg')) else r.read(24)
-            con_type, w, h = getImageInfo(read_data)
+                read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
+            w, h = getImageInfo(read_data)
             if self.get_setting('afn_insert_width_first',view):
                 self.insert_dimension(edit,h,'height',tag_scope)
                 self.insert_dimension(edit,w,'width',tag_scope)
@@ -165,8 +165,8 @@ class FileNameComplete(sublime_plugin.EventListener):
         if fn.endswith(('.png','.jpg','.jpeg','.gif')):
             path = os.path.join(sdir, fn)
             with open(path,'rb') as r:
-                read_data = r.read() # if path.endswith(('.jpg','.jpeg')) else r.read(24)
-            con_type, w, h = getImageInfo(read_data)
+                read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
+            w, h = getImageInfo(read_data)
             return fn+'\t'+'w:'+ str(w) +" h:" + str(h)
         return fn
 
@@ -187,6 +187,7 @@ class FileNameComplete(sublime_plugin.EventListener):
     def on_query_completions(self, view, prefix, locations):
         is_proj_rel = self.get_setting('afn_use_project_root',view)
         valid_scopes = self.get_setting('afn_valid_scopes',view)
+        blacklist = self.get_setting('afn_blacklist_scopes', view)
         uses_keybinding = self.get_setting('afn_use_keybinding', view)
 
         sel = view.sel()[0].a
@@ -197,6 +198,9 @@ class FileNameComplete(sublime_plugin.EventListener):
 
         if not any(s in view.scope_name(sel) for s in valid_scopes):
             return
+
+        if any(s in view.scope_name(sel) for s in blacklist):
+            return []
 
         cur_path = self.get_cur_path(view, sel)
 
