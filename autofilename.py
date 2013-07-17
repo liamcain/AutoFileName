@@ -87,6 +87,12 @@ class FileNameComplete(sublime_plugin.EventListener):
     def on_selection_modified(self,view):
         if not view.window():
             return
+
+        scopes = view.scope_name(view.sel()[0].a)
+        valid_scopes = self.get_setting('afn_valid_scopes',view)
+        if (not any(s in scopes for s in valid_scopes) or 'string.regexp' in scopes):
+            return
+
         sel = view.sel()[0]
         if sel.empty() and self.at_path_end(view):
             if view.substr(sel.a-1) == '/' or len(view.extract_scope(sel.a)) < 3:
@@ -119,16 +125,8 @@ class FileNameComplete(sublime_plugin.EventListener):
 
     def on_query_completions(self, view, prefix, locations):
         is_proj_rel = self.get_setting('afn_use_project_root',view)
-        valid_scopes = self.get_setting('afn_valid_scopes',view)
         sel = view.sel()[0].a
         completions = []
-        
-        if "string.regexp.js" in view.scope_name(sel):
-            return []
-
-        if not any(s in view.scope_name(sel) for s in valid_scopes):
-            return []
-
         cur_path = self.get_cur_path(view, sel)
 
         if is_proj_rel:
