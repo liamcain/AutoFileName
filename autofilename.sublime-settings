@@ -8,7 +8,7 @@
 	// Changing this setting allows for absolute paths on a project level.
 	// This is useful for web designers and developers who want to use the
 	// root of their site.
-	"afn_use_project_root": true,
+	"afn_use_project_root": false,
 
 	// Override the project root. Will only work 
 	// if "auto_file_name_use_project_root" is true.

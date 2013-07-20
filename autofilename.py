@@ -143,7 +143,7 @@ class FileNameComplete(sublime_plugin.EventListener):
             self.showing_win_drives = False
             view.run_command('afn_delete_prefixed_slash')
 
-    def on_selection_modified(self,view):
+    def on_selection_modified_async(self,view):
         if not view.window():
             return
         sel = view.sel()[0]
@@ -191,32 +191,34 @@ class FileNameComplete(sublime_plugin.EventListener):
         uses_keybinding = self.get_setting('afn_use_keybinding', view)
 
         sel = view.sel()[0].a
+        this_dir = ""
         completions = []
 
         if uses_keybinding and not FileNameComplete.is_active:
             return
-
         if not any(s in view.scope_name(sel) for s in valid_scopes):
             return
-
         if any(s in view.scope_name(sel) for s in blacklist):
-            return []
+            return
 
-        cur_path = self.get_cur_path(view, sel)
+        cur_path = os.path.expanduser(self.get_cur_path(view, sel))
 
-        if is_proj_rel and cur_path.startswith('/') or cur_path.startswith('\\'):
-            proot = self.get_setting('afn_proj_root', view)
-            if proot:
-                cur_path = os.path.join(proot, cur_path[1:])
-            else:
-                for f in sublime.active_window().folders():
-                    if f in view.file_name():
-                        cur_path = f
+
+        if cur_path.startswith('/') or cur_path.startswith('\\'):
+            if is_proj_rel:
+                proot = self.get_setting('afn_proj_root', view)
+                if proot:
+                    if not view.file_name() and not os.path.isabs(proot):
+                        proot = "/"
+                    cur_path = os.path.join(proot, cur_path[1:])
+                else:
+                    for f in sublime.active_window().folders():
+                        if f in view.file_name():
+                            cur_path = f
+        elif not view.file_name():
+            return
         else:
-            if not view.file_name():
-                return
-        this_dir = os.path.split(view.file_name())[0]
-
+            this_dir = os.path.split(view.file_name())[0]
         this_dir = os.path.join(this_dir, cur_path)
 
         try:
@@ -232,7 +234,8 @@ class FileNameComplete(sublime_plugin.EventListener):
                 completions.append((self.fix_dir(this_dir,d), d))
             if completions:
                 InsertDimensionsCommand.this_dir = this_dir
-            return completions
+                return completions
+            return
         except OSError:
             print("AutoFileName: could not find " + this_dir)
             return
