@@ -7,9 +7,11 @@ Whether your making a `img` tag in html, setting a background image in css, or l
 Usage
 =====
 If you are looking to autocomplete an image path in an HTML `<img>` tag:
+```html
     <img src="../|" />
+```
 
-Pressing control+space, will activate AutoFileName.  I list of available files where be ready to select.
+Pressing <kbd>ctrl</kbd>+<kbd>space</kbd>, will activate AutoFileName.  I list of available files where be ready to select.
 
 *Looking for an even more automatic and seemless completion?*  Add the following to your User Settings file:
     
@@ -25,4 +27,4 @@ Pressing control+space, will activate AutoFileName.  I list of available files w
       }
     ]
 
-With this, there's no need to worry about pressing control+space, autocompletion with appear upon pressing /.
+With this, there's no need to worry about pressing <kbd>ctrl</kbd>+<kbd>space</kbd>, autocompletion with appear upon pressing /.
