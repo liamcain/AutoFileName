@@ -10,13 +10,18 @@
 	// root of their site.
 	"afn_use_project_root": false,
 
-	// Override the project root. Will only work 
+	// Override the project root. Will only work
 	// if "auto_file_name_use_project_root" is true.
 	// Can be absolute or relative to the current directory.
 	"afn_proj_root": "../",
 
 	// Specify which scopes will trigger AutoFileName
 	"afn_valid_scopes":["string","css","sass","less","scss"],
+
+	// Turn on if using a template language like Slim and want to
+	// insert image dimensions.  If using a template language, you also have
+	// to add it to the valid scopes, above.
+	"afn_template_languages": false,
 
 	// BlackList specific scopes
 	"afn_blacklist_scopes":["string.regexp.js"],
@@ -35,12 +40,12 @@
 	// you can set the plugin to only activate with a keybinding.
 	// If you set this to true, add the following to your user-keybindings:
 	//
-	// { "keys": ["whatever"], "command": "afn_show_filenames", 
+	// { "keys": ["whatever"], "command": "afn_show_filenames",
 	//    "context":
 	//  [
 	//      { "key": "afn_use_keybinding", "operator": "equal", "operand": true }
 	//  ]
 	// }
 	//
-	"afn_use_keybinding": false 
+	"afn_use_keybinding": false
 }
