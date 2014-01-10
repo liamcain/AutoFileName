@@ -36,5 +36,4 @@ Additionally, if you hate awesomeness, you can turn off some of the automagicaln
 
 How Can I help?
 ---------------
-- If you're feeling really nice, I need some help getting jpg dimensions. All the bytes and binary mumbo-jumbo makes my head spin so if you're experienced with that stuff, mind lending me a pull request?
 - **Got a feature request? Something bugging you and you're about to uninstall it?** Submit a bug report with all your fears, desires, and vulgarity. I'll heartily try to fix the plugin to your specifications... well, I'll consider it.
