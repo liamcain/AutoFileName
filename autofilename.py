@@ -5,7 +5,7 @@ from .getimageinfo import getImageInfo
 
 class AfnShowFilenames(sublime_plugin.TextCommand):
     def run(self, edit):
-        FileNameComplete.is_active = True 
+        FileNameComplete.is_active = True
         self.view.run_command('auto_complete',
                 {'disable_auto_insert': True,
                 'next_completion_if_showing': False})
@@ -51,6 +51,7 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
     def insert_dimension(self,edit,dim,name,tag_scope):
         view = self.view
         sel = view.sel()[0].a
+
         if name in view.substr(tag_scope):
             reg = view.find('(?<='+name+'\=)\s*\"\d{1,5}', tag_scope.a)
             view.replace(edit, reg, '"'+str(dim))
@@ -64,13 +65,37 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
         else:
             return sublime.load_settings('autofilename.sublime-settings').get(string)
 
+
+    def insert_dimensions(self, edit, scope, w, h):
+        view = self.view
+
+        if self.get_setting('afn_insert_width_first',view):
+            self.insert_dimension(edit,h,'height', scope)
+            self.insert_dimension(edit,w,'width', scope)
+        else:
+            self.insert_dimension(edit,w,'width', scope)
+            self.insert_dimension(edit,h,'height', scope)
+
+
+    # determines if there is a template tag in a given region.  supports HTML and template languages.
+    def img_tag_in_region(self, region):
+        view = self.view
+
+        # handle template languages but template languages like slim may also contain HTML so
+        # we do a check for that as well
+        return view.substr(region).strip().startswith('img') | ('<img' in view.substr(region))
+
+
     def run(self, edit):
         view = self.view
         view.run_command("commit_completion")
         sel = view.sel()[0].a
+
         if not 'html' in view.scope_name(sel): return
         scope = view.extract_scope(sel-1)
-        tag_scope = view.extract_scope(scope.a-1)
+
+        # if using a template language, the scope is set to the current line
+        tag_scope = view.line(sel) if self.get_setting('afn_template_languages',view) else view.extract_scope(scope.a-1)
 
         path = view.substr(scope)
         if path.startswith(("'","\"","(")):
@@ -79,16 +104,13 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
         path = path[path.rfind(FileNameComplete.sep):] if FileNameComplete.sep in path else path
         full_path = self.this_dir + path
 
-        if '<img' in view.substr(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
+        if self.img_tag_in_region(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
             with open(full_path,'rb') as r:
                 read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
             w, h = getImageInfo(read_data)
-            if self.get_setting('afn_insert_width_first',view):
-                self.insert_dimension(edit,h,'height',tag_scope)
-                self.insert_dimension(edit,w,'width',tag_scope)
-            else:
-                self.insert_dimension(edit,w,'width',tag_scope)
-                self.insert_dimension(edit,h,'height',tag_scope)
+
+            self.insert_dimensions(edit, tag_scope, w, h)
+
 
 # When backspacing through a path, selects the previous path component
 class ReloadAutoCompleteCommand(sublime_plugin.TextCommand):
