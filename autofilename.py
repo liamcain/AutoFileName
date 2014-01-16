@@ -48,16 +48,13 @@ class AfnDeletePrefixedSlash(sublime_plugin.TextCommand):
 class InsertDimensionsCommand(sublime_plugin.TextCommand):
     this_dir = ''
 
+    # inserts the dimension after the closing quotation in the src attribute
     def insert_dimension(self,edit,dim,name,tag_scope):
         view = self.view
         sel = view.sel()[0].a
 
-        if name in view.substr(tag_scope):
-            reg = view.find('(?<='+name+'\=)\s*\"\d{1,5}', tag_scope.a)
-            view.replace(edit, reg, '"'+str(dim))
-        else:
-            dimension = str(dim)
-            view.insert(edit, sel+1, ' '+name+'="'+dimension+'"')
+        view.insert(edit, sel+1, ' '+name+'="'+str(dim)+'"')
+
 
     def get_setting(self,string,view=None):
         if view and view.settings().get(string):
@@ -77,13 +74,32 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
             self.insert_dimension(edit,h,'height', scope)
 
 
-    # determines if there is a template tag in a given region.  supports HTML and template languages.
+    # Determines if there is an img tag in a given region.  Supports HTML and template languages.
     def img_tag_in_region(self, region):
         view = self.view
 
-        # handle template languages but template languages like slim may also contain HTML so
-        # we do a check for that as well
         return view.substr(region).strip().startswith('img') | ('<img' in view.substr(region))
+
+
+    def clear_dimensions(self, edit, tag_scope):
+        view = self.view
+        for dim in ['width', 'height']:
+            if dim in view.substr(tag_scope):
+                reg = view.find(dim + '\=\s*[\"\']\d{1,5}[\"\'] ?', tag_scope.a)
+                view.erase(edit, reg)
+
+
+    # Refine scope to contain exactly the image tag (default extracted scopes may include other tags and images that
+    # negatively affect dimension insertion).
+    def get_tag_scope(self, src):
+        view = self.view
+        sel = view.sel()[0].a
+        scope = view.extract_scope(sel-1)
+
+        tag_scope = view.line(sel) if self.get_setting('afn_template_languages',view) else view.extract_scope(scope.a-1)
+        tag_scope = view.find("<?img((?!img).)*?src=[\'\"]" + src + "[\'\"].*?[>\r\n]", tag_scope.a)
+
+        return tag_scope
 
 
     def run(self, edit):
@@ -94,21 +110,22 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
         if not 'html' in view.scope_name(sel): return
         scope = view.extract_scope(sel-1)
 
-        # if using a template language, the scope is set to the current line
-        tag_scope = view.line(sel) if self.get_setting('afn_template_languages',view) else view.extract_scope(scope.a-1)
-
         path = view.substr(scope)
         if path.startswith(("'","\"","(")):
             path = path[1:-1]
 
+        src = path
+
         path = path[path.rfind(FileNameComplete.sep):] if FileNameComplete.sep in path else path
         full_path = self.this_dir + path
 
+        tag_scope = self.get_tag_scope(src)
         if self.img_tag_in_region(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
             with open(full_path,'rb') as r:
                 read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
             w, h = getImageInfo(read_data)
 
+            self.clear_dimensions(edit, tag_scope)
             self.insert_dimensions(edit, tag_scope, w, h)
 
 
