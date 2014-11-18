@@ -177,6 +177,11 @@ class FileNameComplete(sublime_plugin.EventListener):
     def on_selection_modified_async(self,view):
         if not view.window():
             return
+        
+        # Do not open autocomplete automatically if keybinding mode is used
+        if not FileNameComplete.is_active and self.get_setting('afn_use_keybinding', view):
+            return
+        
         sel = view.sel()[0]
         if sel.empty() and self.at_path_end(view):
             scope_contents = view.substr(view.extract_scope(sel.a-1))
