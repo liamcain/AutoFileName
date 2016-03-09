@@ -161,7 +161,7 @@ class FileNameComplete(sublime_plugin.EventListener):
     def at_path_end(self,view):
         sel = view.sel()[0]
         name = view.scope_name(sel.a)
-        if sel.empty() and 'string.end' in name:
+        if sel.empty() and ('string.end' in name or 'string.quoted.end.js' in name):
             return True
         if '.css' in name and view.substr(sel.a) == ')':
             return True
