@@ -1,6 +1,10 @@
 import sublime
 import sublime_plugin
 import os
+import ctypes
+import platform
+import itertools
+import string
 from .getimageinfo import getImageInfo
 
 class AfnShowFilenames(sublime_plugin.TextCommand):
@@ -136,8 +140,12 @@ class FileNameComplete(sublime_plugin.EventListener):
         FileNameComplete.sep = '/'
 
     def get_drives(self):
-    # Search through valid drive names and see if they exist. (stolen from Facelessuser)
-        return [[d+":"+FileNameComplete.sep, d+":"+FileNameComplete.sep] for d in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if os.path.exists(d + ":")]
+        if 'Windows' not in platform.system():
+            return []
+        drive_bitmask = ctypes.cdll.kernel32.GetLogicalDrives()
+        drive_list = list(itertools.compress(string.ascii_uppercase,
+            map(lambda x:ord(x) - ord('0'), bin(drive_bitmask)[:1:-1])))
+        return [[d+":"+FileNameComplete.sep, d+":"+FileNameComplete.sep] for d in drive_list]
 
     def on_query_context(self, view, key, operator, operand, match_all):
         if key == "afn_insert_dimensions":
