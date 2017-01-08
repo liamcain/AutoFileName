@@ -41,7 +41,8 @@ class AfnSettingsPanel(sublime_plugin.WindowCommand):
 class AfnDeletePrefixedSlash(sublime_plugin.TextCommand):
     def run(self, edit):
         sel = self.view.sel()[0].a
-        reg = sublime.Region(sel-4,sel-3)
+        length = 5 if (self.view.substr(sublime.Region(sel-5,sel-3)) == '\\\\') else 4
+        reg = sublime.Region(sel-length,sel-3)
         self.view.erase(edit, reg)
 
 # inserts width and height dimensions into img tags. HTML only
@@ -226,7 +227,10 @@ class FileNameComplete(sublime_plugin.EventListener):
         cur_path = os.path.expanduser(self.get_cur_path(view, sel))
 
 
-        if cur_path.startswith('/') or cur_path.startswith('\\'):
+        if cur_path.startswith('\\\\') and not cur_path.startswith('\\\\\\') and sublime.platform() == "windows":
+            self.showing_win_drives = True
+            return self.get_drives()
+        elif cur_path.startswith('/') or cur_path.startswith('\\'):
             if is_proj_rel:
                 proot = self.get_setting('afn_proj_root', view)
                 if proot:
