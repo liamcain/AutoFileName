@@ -233,20 +233,22 @@ class FileNameComplete(sublime_plugin.EventListener):
                     if not view.file_name() and not os.path.isabs(proot):
                         proot = "/"
                     cur_path = os.path.join(proot, cur_path[1:])
-                else:
-                    for f in sublime.active_window().folders():
-                        if f in view.file_name():
-                            cur_path = f
+
+                for f in sublime.active_window().folders():
+                    if f in view.file_name():
+                        this_dir = os.path.join(f, cur_path.lstrip('/').lstrip('\\'))
         elif not view.file_name():
             return
         else:
             this_dir = os.path.split(view.file_name())[0]
-        this_dir = os.path.join(this_dir, cur_path)
+            this_dir = os.path.join(this_dir, cur_path)
 
         try:
-            if sublime.platform() == "windows" and len(view.extract_scope(sel)) < 4 and os.path.isabs(cur_path):
+            if sublime.platform() == "windows" and len(view.extract_scope(sel)) < 4 and os.path.isabs(cur_path) \
+            and (not is_proj_rel or not this_dir):
                 self.showing_win_drives = True
                 return self.get_drives()
+
             self.showing_win_drives = False
             dir_files = os.listdir(this_dir)
 
