@@ -248,10 +248,12 @@ class FileNameComplete(sublime_plugin.EventListener):
             this_dir = os.path.join(this_dir, cur_path)
 
         try:
-            if sublime.platform() == "windows" and len(view.extract_scope(sel)) < 4 and os.path.isabs(cur_path) \
-            and (not is_proj_rel or not this_dir):
-                self.showing_win_drives = True
-                return self.get_drives()
+            if os.path.isabs(cur_path) and (not is_proj_rel or not this_dir):
+                if sublime.platform() == "windows" and len(view.extract_scope(sel)) < 4:
+                    self.showing_win_drives = True
+                    return self.get_drives()
+                elif sublime.platform() != "windows":
+                    this_dir = cur_path
 
             self.showing_win_drives = False
             dir_files = os.listdir(this_dir)
