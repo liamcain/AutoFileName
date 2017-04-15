@@ -41,6 +41,8 @@ def getImageInfo(data):
         jpeg.read(2)
         b = jpeg.read(1)
         try:
+            h = 0
+            w = 0
             while (b and ord(b) != 0xDA):
                 while (ord(b) != 0xFF): b = jpeg.read(1)
                 while (ord(b) == 0xFF): b = jpeg.read(1)
