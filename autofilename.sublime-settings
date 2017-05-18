@@ -4,16 +4,16 @@
 // ------------------------------------------------------------------------
 
 {
-	// By default, AutoFileName uses the disk root for absolute paths.
-	// Changing this setting allows for absolute paths on a project level.
+	// While true, this setting allows for absolute paths on a project level.
 	// This is useful for web designers and developers who want to use the
 	// root of their site.
-	"afn_use_project_root": false,
+	// When false, AutoFileName uses the disk root for absolute paths.
+	"afn_use_project_root": true,
 
 	// Override the project root. Will only work
 	// if "auto_file_name_use_project_root" is true.
 	// Can be absolute or relative to the current directory.
-	"afn_proj_root": "../",
+	"afn_proj_root": "",
 
 	// Specify which scopes will trigger AutoFileName
 	"afn_valid_scopes":["string","css","sass","less","scss"],

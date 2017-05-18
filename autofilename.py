@@ -1,6 +1,10 @@
 import sublime
 import sublime_plugin
 import os
+import ctypes
+import platform
+import itertools
+import string
 from .getimageinfo import getImageInfo
 
 class AfnShowFilenames(sublime_plugin.TextCommand):
@@ -41,7 +45,8 @@ class AfnSettingsPanel(sublime_plugin.WindowCommand):
 class AfnDeletePrefixedSlash(sublime_plugin.TextCommand):
     def run(self, edit):
         sel = self.view.sel()[0].a
-        reg = sublime.Region(sel-4,sel-3)
+        length = 5 if (self.view.substr(sublime.Region(sel-5,sel-3)) == '\\\\') else 4
+        reg = sublime.Region(sel-length,sel-3)
         self.view.erase(edit, reg)
 
 # inserts width and height dimensions into img tags. HTML only
@@ -136,8 +141,12 @@ class FileNameComplete(sublime_plugin.EventListener):
         FileNameComplete.sep = '/'
 
     def get_drives(self):
-    # Search through valid drive names and see if they exist. (stolen from Facelessuser)
-        return [[d+":"+FileNameComplete.sep, d+":"+FileNameComplete.sep] for d in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if os.path.exists(d + ":")]
+        if 'Windows' not in platform.system():
+            return []
+        drive_bitmask = ctypes.cdll.kernel32.GetLogicalDrives()
+        drive_list = list(itertools.compress(string.ascii_uppercase,
+            map(lambda x:ord(x) - ord('0'), bin(drive_bitmask)[:1:-1])))
+        return [[d+":"+FileNameComplete.sep, d+":"+FileNameComplete.sep] for d in drive_list]
 
     def on_query_context(self, view, key, operator, operand, match_all):
         if key == "afn_insert_dimensions":
@@ -152,7 +161,7 @@ class FileNameComplete(sublime_plugin.EventListener):
     def at_path_end(self,view):
         sel = view.sel()[0]
         name = view.scope_name(sel.a)
-        if sel.empty() and 'string.end' in name:
+        if sel.empty() and ('string.end' in name or 'string.quoted.end.js' in name):
             return True
         if '.css' in name and view.substr(sel.a) == ')':
             return True
@@ -168,6 +177,11 @@ class FileNameComplete(sublime_plugin.EventListener):
     def on_selection_modified_async(self,view):
         if not view.window():
             return
+        
+        # Do not open autocomplete automatically if keybinding mode is used
+        if not FileNameComplete.is_active and self.get_setting('afn_use_keybinding', view):
+            return
+        
         sel = view.sel()[0]
         if sel.empty() and self.at_path_end(view):
             scope_contents = view.substr(view.extract_scope(sel.a-1))
@@ -226,27 +240,34 @@ class FileNameComplete(sublime_plugin.EventListener):
         cur_path = os.path.expanduser(self.get_cur_path(view, sel))
 
 
-        if cur_path.startswith('/') or cur_path.startswith('\\'):
+        if cur_path.startswith('\\\\') and not cur_path.startswith('\\\\\\') and sublime.platform() == "windows":
+            self.showing_win_drives = True
+            return self.get_drives()
+        elif cur_path.startswith('/') or cur_path.startswith('\\'):
             if is_proj_rel:
                 proot = self.get_setting('afn_proj_root', view)
                 if proot:
                     if not view.file_name() and not os.path.isabs(proot):
                         proot = "/"
                     cur_path = os.path.join(proot, cur_path[1:])
-                else:
-                    for f in sublime.active_window().folders():
-                        if f in view.file_name():
-                            cur_path = f
+
+                for f in sublime.active_window().folders():
+                    if f in view.file_name():
+                        this_dir = os.path.join(f, cur_path.lstrip('/').lstrip('\\'))
         elif not view.file_name():
             return
         else:
             this_dir = os.path.split(view.file_name())[0]
-        this_dir = os.path.join(this_dir, cur_path)
+            this_dir = os.path.join(this_dir, cur_path)
 
         try:
-            if sublime.platform() == "windows" and len(view.extract_scope(sel)) < 4 and os.path.isabs(cur_path):
-                self.showing_win_drives = True
-                return self.get_drives()
+            if os.path.isabs(cur_path) and (not is_proj_rel or not this_dir):
+                if sublime.platform() == "windows" and len(view.extract_scope(sel)) < 4:
+                    self.showing_win_drives = True
+                    return self.get_drives()
+                elif sublime.platform() != "windows":
+                    this_dir = cur_path
+
             self.showing_win_drives = False
             dir_files = os.listdir(this_dir)
 
