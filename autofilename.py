@@ -167,7 +167,7 @@ class FileNameComplete(sublime_plugin.EventListener):
             return True
         return False
 
-    def on_modified(self, view):
+    def on_modified_async(self, view):
         sel = view.sel()[0].a
         txt = view.substr(sublime.Region(sel-4,sel-3))
         if (self.showing_win_drives and txt == FileNameComplete.sep):
@@ -177,11 +177,11 @@ class FileNameComplete(sublime_plugin.EventListener):
     def on_selection_modified_async(self,view):
         if not view.window():
             return
-        
+
         # Do not open autocomplete automatically if keybinding mode is used
         if not FileNameComplete.is_active and self.get_setting('afn_use_keybinding', view):
             return
-        
+
         sel = view.sel()[0]
         if sel.empty() and self.at_path_end(view):
             scope_contents = view.substr(view.extract_scope(sel.a-1))
@@ -282,3 +282,8 @@ class FileNameComplete(sublime_plugin.EventListener):
         except OSError:
             print("AutoFileName: could not find " + this_dir)
             return
+
+
+
+
+
