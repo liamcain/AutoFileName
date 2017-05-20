@@ -178,23 +178,46 @@ class FileNameComplete(sublime_plugin.EventListener):
         if not view.window():
             return
 
+        view_name = view.name()
+        buffer_id = view.buffer_id()
+        file_name = view.file_name()
+
+        # print( "buffer_id: " + str( buffer_id ) )
+        # print( "view_name: " + str( view_name ) )
+        # print( "file_name: " + str( file_name ) )
+
         # Do not open autocomplete automatically if keybinding mode is used
-        if not FileNameComplete.is_active and self.get_setting('afn_use_keybinding', view):
+        if not FileNameComplete.is_active \
+                and ( self.get_setting('afn_use_keybinding', view) and file_name ):
             return
 
-        sel = view.sel()[0]
-        if sel.empty() and self.at_path_end(view):
-            scope_contents = view.substr(view.extract_scope(sel.a-1))
-            p = scope_contents.replace('\r\n', '\n').split('\n')[0]
-            if('\\' in p and not '/' in p):
+        # print( "Here on selection_modified_async" )
+        selection = view.sel()[0]
+
+        # if selection.empty() and self.at_path_end(view):
+        if selection.empty():
+            scope_contents = view.substr(view.extract_scope(selection.a-1))
+            extracted_path = scope_contents.replace('\r\n', '\n').split('\n')[0]
+
+            # print( str( scope_contents ) )
+
+            if('\\' in extracted_path and not '/' in extracted_path):
                 FileNameComplete.sep = '\\'
+
             else:
                 FileNameComplete.sep = '/'
-            if view.substr(sel.a-1) == FileNameComplete.sep or len(view.extract_scope(sel.a)) < 3:
+
+            # print( "Here 2" )
+
+            if view.substr(selection.a-1) == FileNameComplete.sep \
+                    or len(view.extract_scope(selection.a)) < 3 \
+                    or not file_name:
                 view.run_command('auto_complete',
                 {'disable_auto_insert': True,
                 'next_completion_if_showing': False})
+
         else:
+            # print( "Here 1" )
             FileNameComplete.is_active = False
 
     def fix_dir(self,sdir,fn):
@@ -230,7 +253,12 @@ class FileNameComplete(sublime_plugin.EventListener):
         this_dir = ""
         completions = []
 
-        if uses_keybinding and not FileNameComplete.is_active:
+        file_name = view.file_name()
+
+        # print( str( valid_scopes ) )
+        # print( "file_name: " + str( file_name ) )
+
+        if ( uses_keybinding and file_name ) and not FileNameComplete.is_active:
             return
         if not any(s in view.scope_name(sel) for s in valid_scopes):
             return
@@ -238,27 +266,37 @@ class FileNameComplete(sublime_plugin.EventListener):
             return
 
         cur_path = os.path.expanduser(self.get_cur_path(view, sel))
-
+        # print( "cur_path: " + str( cur_path ) )
 
         if cur_path.startswith('\\\\') and not cur_path.startswith('\\\\\\') and sublime.platform() == "windows":
+            # print( "Here 1" )
             self.showing_win_drives = True
             return self.get_drives()
+
         elif cur_path.startswith('/') or cur_path.startswith('\\'):
-            if is_proj_rel:
+
+            if is_proj_rel and file_name:
                 proot = self.get_setting('afn_proj_root', view)
+
                 if proot:
-                    if not view.file_name() and not os.path.isabs(proot):
+
+                    if not file_name and not os.path.isabs(proot):
                         proot = "/"
+
                     cur_path = os.path.join(proot, cur_path[1:])
 
                 for f in sublime.active_window().folders():
-                    if f in view.file_name():
+                    if f in file_name:
                         this_dir = os.path.join(f, cur_path.lstrip('/').lstrip('\\'))
-        elif not view.file_name():
-            return
+
+        elif not file_name:
+            this_dir = cur_path
+
         else:
-            this_dir = os.path.split(view.file_name())[0]
+            this_dir = os.path.split(file_name)[0]
             this_dir = os.path.join(this_dir, cur_path)
+
+        # print( "this_dir: " + str( this_dir ) )
 
         try:
             if os.path.isabs(cur_path) and (not is_proj_rel or not this_dir):
@@ -275,12 +313,15 @@ class FileNameComplete(sublime_plugin.EventListener):
                 if d.startswith('.'): continue
                 if not '.' in d: d += FileNameComplete.sep
                 completions.append((self.fix_dir(this_dir,d), d))
+
             if completions:
                 InsertDimensionsCommand.this_dir = this_dir
                 return completions
+
             return
+
         except OSError:
-            print("AutoFileName: could not find " + this_dir)
+            # print("AutoFileName: could not find " + this_dir)
             return
 
 
