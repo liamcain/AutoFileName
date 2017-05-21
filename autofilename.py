@@ -135,6 +135,9 @@ class ReloadAutoCompleteCommand(sublime_plugin.TextCommand):
 
 
 class FileNameComplete(sublime_plugin.EventListener):
+
+    isOnFilePathPanel = False
+
     def on_activated(self,view):
         self.showing_win_drives = False
         FileNameComplete.is_active = False
@@ -178,8 +181,8 @@ class FileNameComplete(sublime_plugin.EventListener):
         if not view.window():
             return
 
-        view_name = view.name()
-        buffer_id = view.buffer_id()
+        # view_name = view.name()
+        # buffer_id = view.buffer_id()
         file_name = view.file_name()
 
         # print( "buffer_id: " + str( buffer_id ) )
@@ -188,7 +191,8 @@ class FileNameComplete(sublime_plugin.EventListener):
 
         # Do not open autocomplete automatically if keybinding mode is used
         if not FileNameComplete.is_active \
-                and ( self.get_setting('afn_use_keybinding', view) or not file_name ):
+                and self.get_setting('afn_use_keybinding', view) \
+                and not self.isOnFilePathPanel:
             return
 
         # print( "Here on selection_modified_async" )
@@ -262,7 +266,12 @@ class FileNameComplete(sublime_plugin.EventListener):
             return
         if not any(s in view.scope_name(sel) for s in valid_scopes):
             return
-        if any(s in view.scope_name(sel) for s in blacklist):
+
+        # print( "sel: " + str( sel ) )
+        # print( "view: " + str( view ) )
+        # print( "blacklist: " + str( blacklist ) )
+
+        if blacklist and any(s in view.scope_name(sel) for s in blacklist):
             return
 
         cur_path = os.path.expanduser(self.get_cur_path(view, sel))
