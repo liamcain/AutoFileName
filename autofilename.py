@@ -188,7 +188,7 @@ class FileNameComplete(sublime_plugin.EventListener):
 
         # Do not open autocomplete automatically if keybinding mode is used
         if not FileNameComplete.is_active \
-                and ( self.get_setting('afn_use_keybinding', view) and file_name ):
+                and ( self.get_setting('afn_use_keybinding', view) or not file_name ):
             return
 
         # print( "Here on selection_modified_async" )
