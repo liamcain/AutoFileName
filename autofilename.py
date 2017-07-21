@@ -136,12 +136,13 @@ class ReloadAutoCompleteCommand(sublime_plugin.TextCommand):
 
 class FileNameComplete(sublime_plugin.EventListener):
 
-    isOnFilePathPanel = False
+    def __init__(self):
+        FileNameComplete.isOnFilePathPanel = False
 
     def on_activated(self,view):
         self.showing_win_drives = False
-        FileNameComplete.is_active = False
         FileNameComplete.sep = '/'
+        FileNameComplete.is_active = False
 
     def get_drives(self):
         if 'Windows' not in platform.system():
@@ -188,11 +189,14 @@ class FileNameComplete(sublime_plugin.EventListener):
         # print( "buffer_id: " + str( buffer_id ) )
         # print( "view_name: " + str( view_name ) )
         # print( "file_name: " + str( file_name ) )
+        # print( "FileNameComplete.isOnFilePathPanel:           " + str( FileNameComplete.isOnFilePathPanel ) )
+        # print( "FileNameComplete.is_active:                   " + str( FileNameComplete.is_active ) )
+        # print( "self.get_setting('afn_use_keybinding', view): " + str( self.get_setting('afn_use_keybinding', view) ) )
 
         # Do not open autocomplete automatically if keybinding mode is used
         if not FileNameComplete.is_active \
                 and self.get_setting('afn_use_keybinding', view) \
-                and not self.isOnFilePathPanel:
+                and not FileNameComplete.isOnFilePathPanel:
             return
 
         # print( "Here on selection_modified_async" )
@@ -203,15 +207,13 @@ class FileNameComplete(sublime_plugin.EventListener):
             scope_contents = view.substr(view.extract_scope(selection.a-1))
             extracted_path = scope_contents.replace('\r\n', '\n').split('\n')[0]
 
-            # print( str( scope_contents ) )
+            # print( "scope_contents: " + str( scope_contents ) )
 
             if('\\' in extracted_path and not '/' in extracted_path):
                 FileNameComplete.sep = '\\'
 
             else:
                 FileNameComplete.sep = '/'
-
-            # print( "Here 2" )
 
             if view.substr(selection.a-1) == FileNameComplete.sep \
                     or len(view.extract_scope(selection.a)) < 3 \
@@ -221,7 +223,7 @@ class FileNameComplete(sublime_plugin.EventListener):
                 'next_completion_if_showing': False})
 
         else:
-            # print( "Here 1" )
+            # print( "FileNameComplete.is_active = False" )
             FileNameComplete.is_active = False
 
     def fix_dir(self,sdir,fn):
@@ -275,10 +277,10 @@ class FileNameComplete(sublime_plugin.EventListener):
             return
 
         cur_path = os.path.expanduser(self.get_cur_path(view, sel))
-        # print( "cur_path: " + str( cur_path ) )
 
+        # print( "cur_path: " + str( cur_path ) )
         if cur_path.startswith('\\\\') and not cur_path.startswith('\\\\\\') and sublime.platform() == "windows":
-            # print( "Here 1" )
+            # print( "cur_path.startswith('\\\\')" )
             self.showing_win_drives = True
             return self.get_drives()
 
