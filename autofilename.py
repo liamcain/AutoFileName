@@ -172,11 +172,15 @@ class FileNameComplete(sublime_plugin.EventListener):
         return False
 
     def on_modified_async(self, view):
-        sel = view.sel()[0].a
-        txt = view.substr(sublime.Region(sel-4,sel-3))
-        if (self.showing_win_drives and txt == FileNameComplete.sep):
-            self.showing_win_drives = False
-            view.run_command('afn_delete_prefixed_slash')
+        selections = view.sel()
+
+        if len( selections ) > 0:
+            sel = selections[0].a
+            txt = view.substr(sublime.Region(sel-4,sel-3))
+
+            if (self.showing_win_drives and txt == FileNameComplete.sep):
+                self.showing_win_drives = False
+                view.run_command('afn_delete_prefixed_slash')
 
     def on_selection_modified_async(self,view):
         if not view.window():
