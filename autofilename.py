@@ -204,7 +204,13 @@ class FileNameComplete(sublime_plugin.EventListener):
             return
 
         # print( "Here on selection_modified_async" )
-        selection = view.sel()[0]
+        selection = view.sel()
+
+        # Fix sublime.py, line 641, in __getitem__ raise IndexError()
+        if len( selection ):
+            selection = view.sel()[0]
+        else:
+            return
 
         # if selection.empty() and self.at_path_end(view):
         if selection.empty():
