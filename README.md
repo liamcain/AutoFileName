@@ -31,20 +31,24 @@ Usage
 For example:
 
 If you are looking to autocomplete an image path in an HTML `<img>` tag:
-    `<img src="../|" />`
+```html
+    <img src="../|" />
+```
 
-AutoFileName will display a list of files without you having to do anything. As you type, the results will narrow. The list will automatically update as you enter a new directory so you don't have to do a thing.
+Pressing <kbd>ctrl</kbd>+<kbd>space</kbd>, will activate AutoFileName.  I list of available files where be ready to select.
 
-Settings
---------
-There are some options now.
+*Looking for an even more automatic and seemless completion?*  Add the following to your User Settings file:
+    
+    "auto_complete_triggers":
+    [
+      {
+         "characters": "<",
+         "selector": "text.html"
+      },
+      {
+         "characters": "/",
+         "selector": "string.quoted.double.html,string.quoted.single.html, source.css"
+      }
+    ]
 
-Perhaps you're working on a website and all the image files are relative to the project root instead of the Computer's root directory. No worries. Just tell AutoFileName the project root. (More info in the settings file.)
-
-Additionally, if you hate awesomeness, you can turn off some of the automagicalness and use a boring keybinding to activate AutoFileName.
-
-How Can I help?
----------------
-- **Got a feature request? Something bugging you and you're about to uninstall it?** Submit a bug report with all your fears, desires, and vulgarity. I'll heartily try to fix the plugin to your specifications... well, I'll consider it.
-
-<a name="pc-add-repo">1</a>: Instructions originally by [math2001](https://github.com/math2001)
+With this, there's no need to worry about pressing <kbd>ctrl</kbd>+<kbd>space</kbd>, autocompletion with appear upon pressing /.

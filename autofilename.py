@@ -268,6 +268,9 @@ class FileNameComplete(sublime_plugin.EventListener):
         sel = view.sel()[0].a
         this_dir = ""
         completions = []
+        
+        if "string.regexp.js" in view.scope_name(sel):
+            return []
 
         file_name = view.file_name()
 
@@ -342,10 +345,5 @@ class FileNameComplete(sublime_plugin.EventListener):
             return
 
         except OSError:
-            # print("AutoFileName: could not find " + this_dir)
+            print "AutoFileName: could not find " + this_dir
             return
-
-
-
-
-
