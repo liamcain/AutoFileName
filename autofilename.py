@@ -345,5 +345,5 @@ class FileNameComplete(sublime_plugin.EventListener):
             return
 
         except OSError:
-            print( "AutoFileName: could not find " + this_dir )
+            # print( "AutoFileName: could not find " + this_dir )
             return
