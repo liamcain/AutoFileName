@@ -16,7 +16,7 @@
 	"afn_proj_root": "",
 
 	// Specify which scopes will trigger AutoFileName
-	"afn_valid_scopes":["string","css","sass","less","scss"],
+	"afn_valid_scopes":["text", "source"],
 
 	// Turn on if using a template language like Slim and want to
 	// insert image dimensions.  If using a template language, you also have
@@ -47,5 +47,5 @@
 	//  ]
 	// }
 	//
-	"afn_use_keybinding": false
+	"afn_use_keybinding": true
 }
