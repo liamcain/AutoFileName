@@ -134,10 +134,25 @@ class ReloadAutoCompleteCommand(sublime_plugin.TextCommand):
         view.sel().add(region)
 
 
+def enable_autocomplete():
+    """
+        Used externally by other packages which want to autocomplete file paths
+    """
+    # print( "enable_autocomplete" )
+    FileNameComplete.is_forced = True
+
+def disable_autocomplete():
+    """
+        Used externally by other packages which want to autocomplete file paths
+    """
+    # print( "disable_autocomplete" )
+    FileNameComplete.is_forced = False
+
 class FileNameComplete(sublime_plugin.EventListener):
 
     def __init__(self):
-        FileNameComplete.isOnFilePathPanel = False
+        FileNameComplete.is_forced = False
+        FileNameComplete.is_active = False
 
     def on_activated(self,view):
         self.showing_win_drives = False
@@ -196,12 +211,12 @@ class FileNameComplete(sublime_plugin.EventListener):
         # print( "buffer_id: " + str( buffer_id ) )
         # print( "view_name: " + str( view_name ) )
         # print( "file_name: " + str( file_name ) )
-        # print( "FileNameComplete.isOnFilePathPanel:           " + str( FileNameComplete.isOnFilePathPanel ) )
         # print( "FileNameComplete.is_active:                   " + str( FileNameComplete.is_active ) )
+        # print( "FileNameComplete.is_forced:                   " + str( FileNameComplete.is_forced ) )
         # print( "self.get_setting('afn_use_keybinding', view): " + str( self.get_setting('afn_use_keybinding', view) ) )
 
-        # Do not open autocomplete automatically if keybinding mode is used
-        if not ( FileNameComplete.is_active or FileNameComplete.isOnFilePathPanel ):
+        # Open autocomplete automatically if keybinding mode is used
+        if not ( FileNameComplete.is_forced or FileNameComplete.is_active ):
             return
 
         # print( "Here on selection_modified_async" )
@@ -267,7 +282,10 @@ class FileNameComplete(sublime_plugin.EventListener):
         is_proj_rel = self.get_setting('afn_use_project_root',view)
         valid_scopes = self.get_setting('afn_valid_scopes',view)
         blacklist = self.get_setting('afn_blacklist_scopes', view)
-        uses_keybinding = self.get_setting('afn_use_keybinding', view)
+        is_always_enabled = not self.get_setting('afn_use_keybinding', view)
+
+        if not ( is_always_enabled and FileNameComplete.is_forced and FileNameComplete.is_active ):
+            return
 
         sel = view.sel()[0].a
         this_dir = ""
