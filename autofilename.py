@@ -150,7 +150,10 @@ class FileNameComplete(sublime_plugin.EventListener):
         drive_bitmask = ctypes.cdll.kernel32.GetLogicalDrives()
         drive_list = list(itertools.compress(string.ascii_uppercase,
             map(lambda x:ord(x) - ord('0'), bin(drive_bitmask)[:1:-1])))
-        return [[d+":"+FileNameComplete.sep, d+":"+FileNameComplete.sep] for d in drive_list]
+
+        # Overrides default auto completion
+        # https://github.com/BoundInCode/AutoFileName/issues/18
+        return [[d+":"+FileNameComplete.sep] for d in drive_list]
 
     def on_query_context(self, view, key, operator, operand, match_all):
         if key == "afn_insert_dimensions":
@@ -198,9 +201,7 @@ class FileNameComplete(sublime_plugin.EventListener):
         # print( "self.get_setting('afn_use_keybinding', view): " + str( self.get_setting('afn_use_keybinding', view) ) )
 
         # Do not open autocomplete automatically if keybinding mode is used
-        if not FileNameComplete.is_active \
-                and self.get_setting('afn_use_keybinding', view) \
-                and not FileNameComplete.isOnFilePathPanel:
+        if not ( FileNameComplete.is_active or FileNameComplete.isOnFilePathPanel ):
             return
 
         # print( "Here on selection_modified_async" )
@@ -243,7 +244,10 @@ class FileNameComplete(sublime_plugin.EventListener):
                 read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
             w, h = getImageInfo(read_data)
             return fn+'\t'+'w:'+ str(w) +" h:" + str(h)
-        return fn
+
+        # Overrides default auto completion, replaces dot `.` by a `ꓸ` (Lisu Letter Tone Mya Ti)
+        # https://github.com/BoundInCode/AutoFileName/issues/18
+        return fn.replace(".", "ꓸ")
 
     def get_cur_path(self,view,sel):
         scope_contents = view.substr(view.extract_scope(sel-1)).strip()
@@ -277,8 +281,6 @@ class FileNameComplete(sublime_plugin.EventListener):
         # print( str( valid_scopes ) )
         # print( "file_name: " + str( file_name ) )
 
-        if ( uses_keybinding and file_name ) and not FileNameComplete.is_active:
-            return
         if not any(s in view.scope_name(sel) for s in valid_scopes):
             return
 
@@ -295,6 +297,8 @@ class FileNameComplete(sublime_plugin.EventListener):
         if cur_path.startswith('\\\\') and not cur_path.startswith('\\\\\\') and sublime.platform() == "windows":
             # print( "cur_path.startswith('\\\\')" )
             self.showing_win_drives = True
+
+            # print( "self.get_drives(): " + str( self.get_drives() ) )
             return self.get_drives()
 
         elif cur_path.startswith('/') or cur_path.startswith('\\'):
@@ -324,9 +328,13 @@ class FileNameComplete(sublime_plugin.EventListener):
 
         try:
             if os.path.isabs(cur_path) and (not is_proj_rel or not this_dir):
+
                 if sublime.platform() == "windows" and len(view.extract_scope(sel)) < 4:
                     self.showing_win_drives = True
+
+                    # print( "self.get_drives(): " + str( self.get_drives() ) )
                     return self.get_drives()
+
                 elif sublime.platform() != "windows":
                     this_dir = cur_path
 
@@ -334,12 +342,17 @@ class FileNameComplete(sublime_plugin.EventListener):
             dir_files = os.listdir(this_dir)
 
             for d in dir_files:
+
                 if d.startswith('.'): continue
+
                 if not '.' in d: d += FileNameComplete.sep
+
                 completions.append((self.fix_dir(this_dir,d), d))
 
             if completions:
                 InsertDimensionsCommand.this_dir = this_dir
+
+                # print( "completions: " + str( completions ) )
                 return completions
 
             return
