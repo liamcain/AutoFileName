@@ -204,22 +204,22 @@ class FileNameComplete(sublime_plugin.EventListener):
         if not view.window():
             return
 
-        # view_name = view.name()
-        # buffer_id = view.buffer_id()
+        view_name = view.name()
+        buffer_id = view.buffer_id()
         file_name = view.file_name()
 
-        # print( "buffer_id: " + str( buffer_id ) )
-        # print( "view_name: " + str( view_name ) )
-        # print( "file_name: " + str( file_name ) )
-        # print( "FileNameComplete.is_active:                   " + str( FileNameComplete.is_active ) )
-        # print( "FileNameComplete.is_forced:                   " + str( FileNameComplete.is_forced ) )
-        # print( "self.get_setting('afn_use_keybinding', view): " + str( self.get_setting('afn_use_keybinding', view) ) )
+        # print( "on_selection_modified_async, buffer_id: " + str( buffer_id ) )
+        # print( "on_selection_modified_async, view_name: " + str( view_name ) )
+        # print( "on_selection_modified_async, file_name: " + str( file_name ) )
+        # print( "on_selection_modified_async, FileNameComplete.is_active:                   " + str( FileNameComplete.is_active ) )
+        # print( "on_selection_modified_async, FileNameComplete.is_forced:                   " + str( FileNameComplete.is_forced ) )
+        # print( "on_selection_modified_async, self.get_setting('afn_use_keybinding', view): " + str( self.get_setting('afn_use_keybinding', view) ) )
 
         # Open autocomplete automatically if keybinding mode is used
         if not ( FileNameComplete.is_forced or FileNameComplete.is_active ):
             return
 
-        # print( "Here on selection_modified_async" )
+        # print( "on_selection_modified_async, Here on selection_modified_async" )
         selection = view.sel()
 
         # Fix sublime.py, line 641, in __getitem__ raise IndexError()
@@ -233,7 +233,7 @@ class FileNameComplete(sublime_plugin.EventListener):
             scope_contents = view.substr(view.extract_scope(selection.a-1))
             extracted_path = scope_contents.replace('\r\n', '\n').split('\n')[0]
 
-            # print( "scope_contents: " + str( scope_contents ) )
+            # print( "on_selection_modified_async, extracted_path: " + str( extracted_path ) )
 
             if('\\' in extracted_path and not '/' in extracted_path):
                 FileNameComplete.sep = '\\'
@@ -249,7 +249,7 @@ class FileNameComplete(sublime_plugin.EventListener):
                 'next_completion_if_showing': False})
 
         else:
-            # print( "FileNameComplete.is_active = False" )
+            # print( "on_selection_modified_async, FileNameComplete.is_active = False" )
             FileNameComplete.is_active = False
 
     def fix_dir(self,sdir,fn):
@@ -284,7 +284,7 @@ class FileNameComplete(sublime_plugin.EventListener):
         blacklist = self.get_setting('afn_blacklist_scopes', view)
         is_always_enabled = not self.get_setting('afn_use_keybinding', view)
 
-        if not ( is_always_enabled and FileNameComplete.is_forced and FileNameComplete.is_active ):
+        if not ( is_always_enabled or FileNameComplete.is_forced or FileNameComplete.is_active ):
             return
 
         sel = view.sel()[0].a
@@ -296,27 +296,27 @@ class FileNameComplete(sublime_plugin.EventListener):
 
         file_name = view.file_name()
 
-        # print( str( valid_scopes ) )
-        # print( "file_name: " + str( file_name ) )
+        # print( "on_query_completions, file_name: " + str( file_name ) )
+        # print( "on_query_completions, valid_scopes: " + str( valid_scopes ) )
 
         if not any(s in view.scope_name(sel) for s in valid_scopes):
             return
 
-        # print( "sel: " + str( sel ) )
-        # print( "view: " + str( view ) )
-        # print( "blacklist: " + str( blacklist ) )
+        # print( "on_query_completions, sel: " + str( sel ) )
+        # print( "on_query_completions, view: " + str( view ) )
+        # print( "on_query_completions, blacklist: " + str( blacklist ) )
 
         if blacklist and any(s in view.scope_name(sel) for s in blacklist):
             return
 
         cur_path = os.path.expanduser(self.get_cur_path(view, sel))
 
-        # print( "cur_path: " + str( cur_path ) )
+        # print( "on_query_completions, cur_path: " + str( cur_path ) )
         if cur_path.startswith('\\\\') and not cur_path.startswith('\\\\\\') and sublime.platform() == "windows":
-            # print( "cur_path.startswith('\\\\')" )
+            # print( "on_query_completions, cur_path.startswith('\\\\')" )
             self.showing_win_drives = True
 
-            # print( "self.get_drives(): " + str( self.get_drives() ) )
+            # print( "on_query_completions, self.get_drives(): " + str( self.get_drives() ) )
             return self.get_drives()
 
         elif cur_path.startswith('/') or cur_path.startswith('\\'):
@@ -342,7 +342,7 @@ class FileNameComplete(sublime_plugin.EventListener):
             this_dir = os.path.split(file_name)[0]
             this_dir = os.path.join(this_dir, cur_path)
 
-        # print( "this_dir: " + str( this_dir ) )
+        # print( "on_query_completions, this_dir: " + str( this_dir ) )
 
         try:
             if os.path.isabs(cur_path) and (not is_proj_rel or not this_dir):
@@ -350,7 +350,7 @@ class FileNameComplete(sublime_plugin.EventListener):
                 if sublime.platform() == "windows" and len(view.extract_scope(sel)) < 4:
                     self.showing_win_drives = True
 
-                    # print( "self.get_drives(): " + str( self.get_drives() ) )
+                    # print( "on_query_completions, self.get_drives(): " + str( self.get_drives() ) )
                     return self.get_drives()
 
                 elif sublime.platform() != "windows":
@@ -370,11 +370,11 @@ class FileNameComplete(sublime_plugin.EventListener):
             if completions:
                 InsertDimensionsCommand.this_dir = this_dir
 
-                # print( "completions: " + str( completions ) )
+                # print( "on_query_completions, completions: " + str( completions ) )
                 return completions
 
             return
 
         except OSError:
-            # print( "AutoFileName: could not find " + this_dir )
+            # print( "on_query_completions, AutoFileName: could not find " + this_dir )
             return
