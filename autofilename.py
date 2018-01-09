@@ -1,11 +1,17 @@
 import sublime
 import sublime_plugin
+
 import os
 import ctypes
 import platform
 import itertools
 import string
+import time
+
 from .getimageinfo import getImageInfo
+
+g_auto_completions = []
+MAXIMUM_WAIT_TIME = 0.3
 
 class AfnShowFilenames(sublime_plugin.TextCommand):
     def run(self, edit):
@@ -44,9 +50,9 @@ class AfnSettingsPanel(sublime_plugin.WindowCommand):
 # Used to remove the / or \ when autocompleting a Windows drive (eg. /C:/path)
 class AfnDeletePrefixedSlash(sublime_plugin.TextCommand):
     def run(self, edit):
-        sel = self.view.sel()[0].a
-        length = 5 if (self.view.substr(sublime.Region(sel-5,sel-3)) == '\\\\') else 4
-        reg = sublime.Region(sel-length,sel-3)
+        selection = self.view.sel()[0].a
+        length = 5 if (self.view.substr(sublime.Region(selection-5,selection-3)) == '\\\\') else 4
+        reg = sublime.Region(selection-length,selection-3)
         self.view.erase(edit, reg)
 
 # inserts width and height dimensions into img tags. HTML only
@@ -55,14 +61,14 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
 
     def insert_dimension(self,edit,dim,name,tag_scope):
         view = self.view
-        sel = view.sel()[0].a
+        selection = view.sel()[0].a
 
         if name in view.substr(tag_scope):
             reg = view.find('(?<='+name+'\=)\s*\"\d{1,5}', tag_scope.a)
             view.replace(edit, reg, '"'+str(dim))
         else:
             dimension = str(dim)
-            view.insert(edit, sel+1, ' '+name+'="'+dimension+'"')
+            view.insert(edit, selection+1, ' '+name+'="'+dimension+'"')
 
     def get_setting(self,string,view=None):
         if view and view.settings().get(string):
@@ -94,13 +100,13 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         view = self.view
         view.run_command("commit_completion")
-        sel = view.sel()[0].a
+        selection = view.sel()[0].a
 
-        if not 'html' in view.scope_name(sel): return
-        scope = view.extract_scope(sel-1)
+        if not 'html' in view.scope_name(selection): return
+        scope = view.extract_scope(selection-1)
 
         # if using a template language, the scope is set to the current line
-        tag_scope = view.line(sel) if self.get_setting('afn_template_languages',view) else view.extract_scope(scope.a-1)
+        tag_scope = view.line(selection) if self.get_setting('afn_template_languages',view) else view.extract_scope(scope.a-1)
 
         path = view.substr(scope)
         if path.startswith(("'","\"","(")):
@@ -123,14 +129,14 @@ class ReloadAutoCompleteCommand(sublime_plugin.TextCommand):
         view = self.view
         view.run_command('hide_auto_complete')
         view.run_command('left_delete')
-        sel = view.sel()[0].a
+        selection = view.sel()[0].a
 
-        scope = view.extract_scope(sel-1)
+        scope = view.extract_scope(selection-1)
         scope_text = view.substr(scope)
-        slash_pos = scope_text[:sel - scope.a].rfind(FileNameComplete.sep)
+        slash_pos = scope_text[:selection - scope.a].rfind(FileNameComplete.sep)
         slash_pos += 1 if slash_pos < 0 else 0
 
-        region = sublime.Region(scope.a+slash_pos+1,sel)
+        region = sublime.Region(scope.a+slash_pos+1,selection)
         view.sel().add(region)
 
 
@@ -162,39 +168,49 @@ class FileNameComplete(sublime_plugin.EventListener):
     def get_drives(self):
         if 'Windows' not in platform.system():
             return []
+
         drive_bitmask = ctypes.cdll.kernel32.GetLogicalDrives()
         drive_list = list(itertools.compress(string.ascii_uppercase,
             map(lambda x:ord(x) - ord('0'), bin(drive_bitmask)[:1:-1])))
 
         # Overrides default auto completion
         # https://github.com/BoundInCode/AutoFileName/issues/18
-        return [[d+":"+FileNameComplete.sep] for d in drive_list]
+        for driver in drive_list:
+            g_auto_completions.append( driver + ":" + FileNameComplete.sep )
+
+            if time.time() - self.start_time > MAXIMUM_WAIT_TIME:
+                return
 
     def on_query_context(self, view, key, operator, operand, match_all):
         if key == "afn_insert_dimensions":
             return self.get_setting('afn_insert_dimensions',view) == operand
+
         if key == "afn_deleting_slash":  # for reloading autocomplete
-            sel = view.sel()[0]
-            valid = self.at_path_end(view) and sel.empty() and view.substr(sel.a-1) == FileNameComplete.sep
+            selection = view.sel()[0]
+            valid = self.at_path_end(view) and selection.empty() and view.substr(selection.a-1) == FileNameComplete.sep
             return valid == operand
+
         if key == "afn_use_keybinding":
             return self.get_setting('afn_use_keybinding',view) == operand
 
     def at_path_end(self,view):
-        sel = view.sel()[0]
-        name = view.scope_name(sel.a)
-        if sel.empty() and ('string.end' in name or 'string.quoted.end.js' in name):
+        selection = view.sel()[0]
+        name = view.scope_name(selection.a)
+
+        if selection.empty() and ('string.end' in name or 'string.quoted.end.js' in name):
             return True
-        if '.css' in name and view.substr(sel.a) == ')':
+
+        if '.css' in name and view.substr(selection.a) == ')':
             return True
+
         return False
 
     def on_modified_async(self, view):
         selections = view.sel()
 
         if len( selections ) > 0:
-            sel = selections[0].a
-            txt = view.substr(sublime.Region(sel-4,sel-3))
+            selection = selections[0].a
+            txt = view.substr(sublime.Region(selection-4,selection-3))
 
             if (self.showing_win_drives and txt == FileNameComplete.sep):
                 self.showing_win_drives = False
@@ -255,8 +271,10 @@ class FileNameComplete(sublime_plugin.EventListener):
     def fix_dir(self,sdir,fn):
         if fn.endswith(('.png','.jpg','.jpeg','.gif')):
             path = os.path.join(sdir, fn)
+
             with open(path,'rb') as r:
                 read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
+
             w, h = getImageInfo(read_data)
             return fn+'\t'+'w:'+ str(w) +" h:" + str(h)
 
@@ -264,9 +282,10 @@ class FileNameComplete(sublime_plugin.EventListener):
         # https://github.com/BoundInCode/AutoFileName/issues/18
         return fn.replace(".", "ꓸ")
 
-    def get_cur_path(self,view,sel):
-        scope_contents = view.substr(view.extract_scope(sel-1)).strip()
+    def get_cur_path(self,view,selection):
+        scope_contents = view.substr(view.extract_scope(selection-1)).strip()
         cur_path = scope_contents.replace('\r\n', '\n').split('\n')[0]
+
         if cur_path.startswith(("'","\"","(")):
             cur_path = cur_path[1:-1]
 
@@ -275,54 +294,68 @@ class FileNameComplete(sublime_plugin.EventListener):
     def get_setting(self,string,view=None):
         if view and view.settings().get(string):
             return view.settings().get(string)
+
         else:
             return sublime.load_settings('autofilename.sublime-settings').get(string)
 
     def on_query_completions(self, view, prefix, locations):
-        is_proj_rel = self.get_setting('afn_use_project_root',view)
-        valid_scopes = self.get_setting('afn_valid_scopes',view)
-        blacklist = self.get_setting('afn_blacklist_scopes', view)
         is_always_enabled = not self.get_setting('afn_use_keybinding', view)
 
         if not ( is_always_enabled or FileNameComplete.is_forced or FileNameComplete.is_active ):
             return
 
-        sel = view.sel()[0].a
-        this_dir = ""
-        completions = []
+        selection = view.sel()[0].a
 
-        if "string.regexp.js" in view.scope_name(sel):
+        # print( "on_query_completions, view_id: " + str( view.id() ) )
+        # print( "on_query_completions, selection: " + str( selection ) )
+
+        if "string.regexp.js" in view.scope_name(selection):
             return []
 
-        file_name = view.file_name()
+        blacklist = self.get_setting('afn_blacklist_scopes', view)
+        valid_scopes = self.get_setting('afn_valid_scopes',view)
 
-        # print( "on_query_completions, file_name: " + str( file_name ) )
+        # print( "on_query_completions, blacklist: " + str( blacklist ) )
         # print( "on_query_completions, valid_scopes: " + str( valid_scopes ) )
 
-        if not any(s in view.scope_name(sel) for s in valid_scopes):
+        if not any(scope in view.scope_name(selection) for scope in valid_scopes):
             return
 
-        # print( "on_query_completions, sel: " + str( sel ) )
-        # print( "on_query_completions, view: " + str( view ) )
-        # print( "on_query_completions, blacklist: " + str( blacklist ) )
-
-        if blacklist and any(s in view.scope_name(sel) for s in blacklist):
+        if blacklist and any(scope in view.scope_name(selection) for scope in blacklist):
             return
 
-        cur_path = os.path.expanduser(self.get_cur_path(view, sel))
+        self.view = view
+        self.selection = selection
 
-        # print( "on_query_completions, cur_path: " + str( cur_path ) )
+        self.start_time = time.time()
+        self.get_completions()
+
+        # print( "on_query_completions, g_auto_completions: " + str( g_auto_completions ) )
+        return g_auto_completions
+
+    def get_completions(self):
+        g_auto_completions.clear()
+
+        file_name = self.view.file_name()
+        is_proj_rel = self.get_setting('afn_use_project_root',self.view)
+
+        this_dir = ""
+        cur_path = os.path.expanduser(self.get_cur_path(self.view, self.selection))
+
+        # print( "get_completions, file_name: " + str( file_name ) )
+        # print( "get_completions, cur_path: " + str( cur_path ) )
+
         if cur_path.startswith('\\\\') and not cur_path.startswith('\\\\\\') and sublime.platform() == "windows":
-            # print( "on_query_completions, cur_path.startswith('\\\\')" )
+            # print( "get_completions, cur_path.startswith('\\\\')" )
             self.showing_win_drives = True
 
-            # print( "on_query_completions, self.get_drives(): " + str( self.get_drives() ) )
-            return self.get_drives()
+            self.get_drives()
+            return
 
         elif cur_path.startswith('/') or cur_path.startswith('\\'):
 
             if is_proj_rel and file_name:
-                proot = self.get_setting('afn_proj_root', view)
+                proot = self.get_setting('afn_proj_root', self.view)
 
                 if proot:
 
@@ -342,16 +375,16 @@ class FileNameComplete(sublime_plugin.EventListener):
             this_dir = os.path.split(file_name)[0]
             this_dir = os.path.join(this_dir, cur_path)
 
-        # print( "on_query_completions, this_dir: " + str( this_dir ) )
+        # print( "get_completions, this_dir: " + str( this_dir ) )
 
         try:
             if os.path.isabs(cur_path) and (not is_proj_rel or not this_dir):
 
-                if sublime.platform() == "windows" and len(view.extract_scope(sel)) < 4:
+                if sublime.platform() == "windows" and len(self.view.extract_scope(self.selection)) < 4:
                     self.showing_win_drives = True
 
-                    # print( "on_query_completions, self.get_drives(): " + str( self.get_drives() ) )
-                    return self.get_drives()
+                    self.get_drives()
+                    return
 
                 elif sublime.platform() != "windows":
                     this_dir = cur_path
@@ -359,22 +392,19 @@ class FileNameComplete(sublime_plugin.EventListener):
             self.showing_win_drives = False
             dir_files = os.listdir(this_dir)
 
-            for d in dir_files:
+            for directory in dir_files:
 
-                if d.startswith('.'): continue
+                if directory.startswith( '.' ): continue
 
-                if not '.' in d: d += FileNameComplete.sep
+                if not '.' in directory: directory += FileNameComplete.sep
 
-                completions.append((self.fix_dir(this_dir,d), d))
-
-            if completions:
+                g_auto_completions.append( ( self.fix_dir( this_dir,directory ), directory ) )
                 InsertDimensionsCommand.this_dir = this_dir
 
-                # print( "on_query_completions, completions: " + str( completions ) )
-                return completions
-
-            return
+                if time.time() - self.start_time > MAXIMUM_WAIT_TIME:
+                    return
 
         except OSError:
-            # print( "on_query_completions, AutoFileName: could not find " + this_dir )
-            return
+            # print( "get_completions, AutoFileName: could not find " + this_dir )
+            pass
+
