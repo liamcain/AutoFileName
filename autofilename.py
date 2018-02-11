@@ -182,9 +182,6 @@ class FileNameComplete(sublime_plugin.EventListener):
                 return
 
     def on_query_context(self, view, key, operator, operand, match_all):
-        if key == "afn_insert_dimensions":
-            return self.get_setting('afn_insert_dimensions',view) == operand
-
         if key == "afn_deleting_slash":  # for reloading autocomplete
             selection = view.sel()[0]
             valid = self.at_path_end(view) and selection.empty() and view.substr(selection.a-1) == FileNameComplete.sep
