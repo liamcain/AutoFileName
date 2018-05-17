@@ -19,7 +19,7 @@ Installation
 ------------
 To install this custom build of AutoFileName using package control<sup>[1](#pc-add-repo)</sup>
 
-1. Open up the command palette (`ctrl+shift+p`), and find `Package Control: Add Repository`. Then enter the URL of this repo: `https://github.com/jsilvermist/AutoFileName/tree/afn-i` in the input field.
+1. Open up the command palette (`ctrl+shift+p`), and find `Package Control: Add Repository`. Then enter the URL of this repo: `https://github.com/evandrocoan/AutoFileName` in the input field.
 2. Open up the command palette again and find `Package Control: Install Package`, and just search for `AutoFileName`. (just a normal install)
 
 If you want to remove this and go back to the default version of AutoFileName, find `Package Control: Remove Repository`, and select the repository to remove it. You can now reinstall the default version.
