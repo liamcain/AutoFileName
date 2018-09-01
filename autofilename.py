@@ -124,7 +124,7 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
         path = path[path.rfind(FileNameComplete.sep):] if FileNameComplete.sep in path else path
         full_path = self.this_dir + path
 
-        if self.img_tag_in_region(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
+        if self.get_setting('afn_insert_dimensions',self.view) and self.img_tag_in_region(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
             with open(full_path,'rb') as r:
                 read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
             w, h = getImageInfo(read_data)
@@ -206,10 +206,11 @@ class FileNameComplete(sublime_plugin.EventListener):
     def fix_dir(self,sdir,fn):
         if fn.endswith(('.png','.jpg','.jpeg','.gif')):
             path = os.path.join(sdir, fn)
+            size = ("%.0fkb" % (os.path.getsize(path) / 1000))
             with open(path,'rb') as r:
                 read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
             w, h = getImageInfo(read_data)
-            return fn+'\t'+'w:'+ str(w) +" h:" + str(h)
+            return fn +'\t' + size +'\t'+'w:'+ str(w) +" h:" + str(h)
         return fn
 
     def short_dir(self,sdir,fn):
@@ -263,6 +264,8 @@ class FileNameComplete(sublime_plugin.EventListener):
 
         cur_path = os.path.expanduser(self.get_cur_path(view, sel))
 
+        if len(cur_path)==0:
+            return
 
         if cur_path.startswith('/') or cur_path.startswith('\\'):
             if is_proj_rel:
