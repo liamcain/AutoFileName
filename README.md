@@ -1,6 +1,42 @@
 AutoFileName
 ============
 
+New Feature: Popup Preview Mode
+--------------------------------------
+Preview the image in a popup, it's so coooooooooool.
+
+![example_of_popup_preview_mode.png](./example_of_popup_preview_mode.png)
+
+One More Thing
+--------------
+* support the alias `@` in Vue.js
+* deep search the files in sub dirs.
+* ...
+
+
+Install
+-------
+* download the zip:https://github.com/wanyaxing/AutoFileName/archive/st3.zip
+* unzip and save the files in `Sublime Text 3/Packages/`
+
+
+
+
+
+
+
+
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+
+> below is the description from [BoundInCode/AutoFileName](https://github.com/BoundInCode/AutoFileName/tree/st3)
+
+
 Autocomplete Filenames in Sublime Text
 --------------------------------------
 Do you ever find yourself sifting through folders in the sidebar trying to remember what you named that file? Can't remember if it was a jpg or a png? Maybe you just wish you could type filenames faster. *No more.*

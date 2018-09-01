@@ -52,6 +52,6 @@
 	// It is new mode by wanyaxing
 	// In this mode, all suggesting menus will show in a popup,
 	// It do not support keyboard such as key up or key down, You should click the menu with mouse.
-	// If You want the original AutoFileName, you should disable this future.
+	// If You want the original AutoFileName, you should disable this feature.
 	"afn_popup_preview_mode": true,
 }
