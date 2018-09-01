@@ -256,12 +256,25 @@ class FileNameComplete(sublime_plugin.EventListener):
                 self.showing_win_drives = True
                 return self.get_drives()
             self.showing_win_drives = False
+
+            cur_cmd = view.substr(view.extract_scope(sel-1)).strip("\"'")
+            cur_word = cur_cmd[cur_cmd.rfind(FileNameComplete.sep)+1:] if FileNameComplete.sep in cur_cmd else ''
+            if cur_word.endswith(' ') or cur_word.startswith(' '):
+                return
+
             dir_files = os.listdir(this_dir)
 
             for d in dir_files:
                 if d.startswith('.'): continue
                 if not '.' in d: d += FileNameComplete.sep
-                completions.append((self.fix_dir(this_dir,d), d))
+                if cur_word=='' or d.find(cur_word)>=0:
+                    completions.append((self.fix_dir(this_dir,d), d))
+            if not completions:
+                if cur_word != '':
+                    for root, dirs, files in os.walk(this_dir, topdown=False):
+                        for d in files:
+                            if d.find(cur_word) >= 0:
+                                completions.append((self.fix_dir(root,d),root.replace(this_dir,'') +'/'+ d))
             if completions:
                 InsertDimensionsCommand.this_dir = this_dir
                 return completions
