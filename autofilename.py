@@ -236,7 +236,15 @@ class FileNameComplete(sublime_plugin.EventListener):
                 else:
                     for f in sublime.active_window().folders():
                         if f in view.file_name():
-                            cur_path = f
+                            cur_path = f + cur_path
+        elif cur_path.startswith('~@/') or cur_path.startswith('@/'):
+            if is_proj_rel:
+                for f in sublime.active_window().folders():
+                    if f in view.file_name():
+                        if cur_path.startswith('~@/'):
+                            cur_path = f + '/src/' + cur_path[3:]
+                        elif cur_path.startswith('@/'):
+                            cur_path = f + '/src/' + cur_path[2:]
         elif not view.file_name():
             return
         else:
