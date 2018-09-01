@@ -2,6 +2,11 @@ import sublime
 import sublime_plugin
 import os
 from .getimageinfo import getImageInfo
+import base64
+
+TEMPLATE = '''
+    <a style="text-decoration:none;line-height:36px;display:block;" href="%s"><div>%s %s</div></a>
+    '''
 
 class AfnShowFilenames(sublime_plugin.TextCommand):
     def run(self, edit):
@@ -14,11 +19,13 @@ class AfnSettingsPanel(sublime_plugin.WindowCommand):
     def run(self):
         use_pr = '✗ Stop using project root' if self.get_setting('afn_use_project_root') else '✓ Use Project Root'
         use_dim = '✗ Disable HTML Image Dimension insertion' if self.get_setting('afn_insert_dimensions') else '✓ Auto-insert Image Dimensions in HTML'
+        use_popup = '✗ Stop Popup Preview Mode' if self.get_setting('afn_popup_preview_mode') else '✓ Use Popup Preview Mode'
         p_root = self.get_setting('afn_proj_root')
 
         menu = [
                 [use_pr, p_root],
-                [use_dim, '<img src="_path_" width = "x" height = "y" >']
+                [use_dim, '<img src="_path_" width = "x" height = "y" >'],
+                [use_popup, 'All menus show in a popup, you should chose item with mouse.']
                ]
         self.window.show_quick_panel(menu, self.on_done)
 
@@ -30,6 +37,9 @@ class AfnSettingsPanel(sublime_plugin.WindowCommand):
         if value == 1:
             use_dim = settings.get('afn_insert_dimensions')
             settings.set('afn_insert_dimensions', not use_dim)
+        if value == 2:
+            use_popup = settings.get('afn_popup_preview_mode')
+            settings.set('afn_popup_preview_mode', not use_popup)
 
     def get_setting(self,string,view=None):
         if view and view.settings().get(string):
@@ -43,6 +53,16 @@ class AfnDeletePrefixedSlash(sublime_plugin.TextCommand):
         sel = self.view.sel()[0].a
         reg = sublime.Region(sel-4,sel-3)
         self.view.erase(edit, reg)
+
+# Used to remove the / or \ when autocompleting a Windows drive (eg. /C:/path)
+class ReplaceCurWord(sublime_plugin.TextCommand):
+    def run(self, edit, **args):
+        href = args.get('href')
+        selStart = args.get('selStart')
+        sel = self.view.sel()[0].a
+        reg = sublime.Region(selStart,sel)
+        self.view.erase(edit, reg)
+        self.view.insert(edit, selStart,href)
 
 # inserts width and height dimensions into img tags. HTML only
 class InsertDimensionsCommand(sublime_plugin.TextCommand):
@@ -192,6 +212,23 @@ class FileNameComplete(sublime_plugin.EventListener):
             return fn+'\t'+'w:'+ str(w) +" h:" + str(h)
         return fn
 
+    def short_dir(self,sdir,fn):
+        if fn.endswith(('.png','.jpg','.jpeg','.gif')):
+            path = os.path.join(sdir, fn)
+            size = ("%.0fkb" % (os.path.getsize(path) / 1000))
+            with open(path,'rb') as r:
+                read_data = r.read()# if path.endswith(('.jpg','.jpeg')) else r.read(24)
+            w, h = getImageInfo(read_data)
+            if w > h:
+                styleW = 28
+                styleH = styleW * h / w
+            else:
+                styleH = 28
+                styleW = styleH * w / h
+            encoded = str(base64.b64encode(read_data), "utf-8")
+            return '<img style="width: %dpx;height: %dpx;" alt="width: %dpx;height: %dpx;" src="data:image/png;base64,%s"/>' % (styleW,styleH,w, h, encoded)
+        return '　'
+
     def get_cur_path(self,view,sel):
         scope_contents = view.substr(view.extract_scope(sel-1)).strip()
         cur_path = scope_contents.replace('\r\n', '\n').split('\n')[0]
@@ -211,6 +248,7 @@ class FileNameComplete(sublime_plugin.EventListener):
         valid_scopes = self.get_setting('afn_valid_scopes',view)
         blacklist = self.get_setting('afn_blacklist_scopes', view)
         uses_keybinding = self.get_setting('afn_use_keybinding', view)
+        is_popup_preview = self.get_setting('afn_popup_preview_mode',view)
 
         sel = view.sel()[0].a
         this_dir = ""
@@ -266,15 +304,45 @@ class FileNameComplete(sublime_plugin.EventListener):
 
             for d in dir_files:
                 if d.startswith('.'): continue
-                if not '.' in d: d += FileNameComplete.sep
-                if cur_word=='' or d.find(cur_word)>=0:
-                    completions.append((self.fix_dir(this_dir,d), d))
+                if not '.' in d:
+                    d += FileNameComplete.sep
+                    if cur_word=='' or d.find(cur_word)>=0:
+                        if is_popup_preview:
+                            completions.append(TEMPLATE % (d,self.short_dir(this_dir,d),d))
+                        else:
+                            completions.append((self.fix_dir(this_dir,d), d))
+            for d in dir_files:
+                if d.startswith('.'): continue
+                if '.' in d:
+                    if cur_word=='' or d.find(cur_word)>=0:
+                        if is_popup_preview:
+                            completions.append(TEMPLATE % (d,self.short_dir(this_dir,d),d))
+                        else:
+                            completions.append((self.fix_dir(this_dir,d), d))
             if not completions:
                 if cur_word != '':
                     for root, dirs, files in os.walk(this_dir, topdown=False):
                         for d in files:
                             if d.find(cur_word) >= 0:
-                                completions.append((self.fix_dir(root,d),root.replace(this_dir,'') +'/'+ d))
+                                if is_popup_preview:
+                                    completions.append(TEMPLATE % (root.replace(this_dir,'') +'/'+ d,self.short_dir(root,d),root.replace(this_dir,'') +'/'+ d) )
+                                else:
+                                    completions.append((self.fix_dir(root,d),root.replace(this_dir,'') +'/'+ d) )
+            if is_popup_preview:
+                if completions:
+                    selStart = sel - len(cur_word)
+                    def on_navigate(href):
+                        view.run_command('replace_cur_word',{'href':href,'selStart':selStart})
+                    view.show_popup(''.join(completions),sublime.COOPERATE_WITH_AUTO_COMPLETE,-1,500,500,on_navigate=on_navigate);
+                    # show single item for disable more completions
+                    empty = []
+                    empty.append(('.','.'))
+                    return empty
+                else:
+                    view.hide_popup()
+                    completions.append((''))
+                return completions
+
             if completions:
                 InsertDimensionsCommand.this_dir = this_dir
                 return completions
