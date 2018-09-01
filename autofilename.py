@@ -28,8 +28,8 @@ class AfnSettingsPanel(sublime_plugin.WindowCommand):
             use_pr = settings.get('afn_use_project_root')
             settings.set('afn_use_project_root', not use_pr)
         if value == 1:
-            use_dim = settings.get('afn_use_project_root')
-            settings.set('afn_use_project_root', not use_dim)
+            use_dim = settings.get('afn_insert_dimensions')
+            settings.set('afn_insert_dimensions', not use_dim)
 
     def get_setting(self,string,view=None):
         if view and view.settings().get(string):
