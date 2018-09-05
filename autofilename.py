@@ -330,7 +330,7 @@ class FileNameComplete(sublime_plugin.EventListener):
                                     popup_item = self.popup_item(root,d)
                                     if popup_item:
                                         popupItems.append(TEMPLATE % (root.replace(this_dir,'') +'/'+ d,self.popup_item(root,d),root.replace(this_dir,'') +'/'+ d) )
-                                completions.append((self.fix_dir(root,d),root.replace(this_dir,'') +'/'+ d) )
+                                completions.append((root.replace(this_dir,'')+'/'+self.fix_dir(root,d),root.replace(this_dir,'') +'/'+ d) )
             if is_popup_preview:
                 if popupItems:
                     selStart = sel - len(cur_word)
