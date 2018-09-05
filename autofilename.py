@@ -213,7 +213,7 @@ class FileNameComplete(sublime_plugin.EventListener):
             return fn +'\t' + size +'\t'+'w:'+ str(w) +" h:" + str(h)
         return fn
 
-    def short_dir(self,sdir,fn):
+    def popup_item(self,sdir,fn):
         if fn.endswith(('.png','.jpg','.jpeg','.gif')):
             path = os.path.join(sdir, fn)
             size = ("%.0fkb" % (os.path.getsize(path) / 1000))
@@ -228,7 +228,7 @@ class FileNameComplete(sublime_plugin.EventListener):
                 styleW = styleH * w / h
             encoded = str(base64.b64encode(read_data), "utf-8")
             return '<img style="width: %dpx;height: %dpx;" alt="width: %dpx;height: %dpx;" src="data:image/png;base64,%s"/>' % (styleW,styleH,w, h, encoded)
-        return '　'
+        return None
 
     def get_cur_path(self,view,sel):
         scope_contents = view.substr(view.extract_scope(sel-1)).strip()
@@ -254,6 +254,7 @@ class FileNameComplete(sublime_plugin.EventListener):
         sel = view.sel()[0].a
         this_dir = ""
         completions = []
+        popupItems = []
 
         if uses_keybinding and not FileNameComplete.is_active:
             return
@@ -310,41 +311,34 @@ class FileNameComplete(sublime_plugin.EventListener):
                 if not '.' in d:
                     d += FileNameComplete.sep
                     if cur_word=='' or d.find(cur_word)>=0:
-                        if is_popup_preview:
-                            completions.append(TEMPLATE % (d,self.short_dir(this_dir,d),d))
-                        else:
-                            completions.append((self.fix_dir(this_dir,d), d))
+                        completions.append((self.fix_dir(this_dir,d), d))
             for d in dir_files:
                 if d.startswith('.'): continue
                 if '.' in d:
                     if cur_word=='' or d.find(cur_word)>=0:
                         if is_popup_preview:
-                            completions.append(TEMPLATE % (d,self.short_dir(this_dir,d),d))
-                        else:
-                            completions.append((self.fix_dir(this_dir,d), d))
+                            popup_item = self.popup_item(this_dir,d)
+                            if popup_item:
+                                popupItems.append(TEMPLATE % (d,self.popup_item(this_dir,d),d))
+                        completions.append((self.fix_dir(this_dir,d), d))
             if not completions:
                 if cur_word != '':
                     for root, dirs, files in os.walk(this_dir, topdown=False):
                         for d in files:
                             if d.find(cur_word) >= 0:
                                 if is_popup_preview:
-                                    completions.append(TEMPLATE % (root.replace(this_dir,'') +'/'+ d,self.short_dir(root,d),root.replace(this_dir,'') +'/'+ d) )
-                                else:
-                                    completions.append((self.fix_dir(root,d),root.replace(this_dir,'') +'/'+ d) )
+                                    popup_item = self.popup_item(root,d)
+                                    if popup_item:
+                                        popupItems.append(TEMPLATE % (root.replace(this_dir,'') +'/'+ d,self.popup_item(root,d),root.replace(this_dir,'') +'/'+ d) )
+                                completions.append((self.fix_dir(root,d),root.replace(this_dir,'') +'/'+ d) )
             if is_popup_preview:
-                if completions:
+                if popupItems:
                     selStart = sel - len(cur_word)
                     def on_navigate(href):
                         view.run_command('replace_cur_word',{'href':href,'selStart':selStart})
-                    view.show_popup(''.join(completions),sublime.COOPERATE_WITH_AUTO_COMPLETE,-1,500,500,on_navigate=on_navigate);
-                    # show single item for disable more completions
-                    empty = []
-                    empty.append(('.','.'))
-                    return empty
+                    view.show_popup(''.join(popupItems),sublime.COOPERATE_WITH_AUTO_COMPLETE,-1,500,500,on_navigate=on_navigate);
                 else:
                     view.hide_popup()
-                    completions.append((''))
-                return completions
 
             if completions:
                 InsertDimensionsCommand.this_dir = this_dir
