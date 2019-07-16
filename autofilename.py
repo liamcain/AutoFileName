@@ -266,14 +266,19 @@ class FileNameComplete(sublime_plugin.EventListener):
             FileNameComplete.is_active = False
 
     def fix_dir(self,sdir,fn):
-        if fn.endswith(('.png','.jpg','.jpeg','.gif')):
-            path = os.path.join(sdir, fn)
+        path = os.path.join(sdir, fn)
 
+        if fn.endswith(('.png','.jpg','.jpeg','.gif')):
             with open(path,'rb') as r:
                 read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
 
             w, h = getImageInfo(read_data)
             return fn+'\t'+'w:'+ str(w) +" h:" + str(h)
+
+        if os.path.isdir(path):
+            fn += "\tFolder"
+        elif os.path.isfile(path):
+            fn += "\tFile"
 
         # Overrides default auto completion, replaces dot `.` by a `ꓸ` (Lisu Letter Tone Mya Ti)
         # https://github.com/BoundInCode/AutoFileName/issues/18
