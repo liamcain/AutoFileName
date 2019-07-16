@@ -320,10 +320,10 @@ class FileNameComplete(sublime_plugin.EventListener):
         # print( "on_query_completions, blacklist: " + str( blacklist ) )
         # print( "on_query_completions, valid_scopes: " + str( valid_scopes ) )
 
-        if not any(scope in view.scope_name(selection) for scope in valid_scopes):
+        if not any(view.match_selector(selection, scope) for scope in valid_scopes):
             return
 
-        if blacklist and any(scope in view.scope_name(selection) for scope in blacklist):
+        if any(view.match_selector(selection, scope) for scope in blacklist):
             return
 
         self.view = view
