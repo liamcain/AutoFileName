@@ -15,14 +15,28 @@ Features
 - Autoinsert dimensions in img tags (can be disabled in settings)
 - Support for both '/' and '\' for all you Windows hooligans
 
-Installation
-------------
-To install this custom build of AutoFileName using package control<sup>[1](#pc-add-repo)</sup>
 
-1. Open up the command palette (`ctrl+shift+p`), and find `Package Control: Add Repository`. Then enter the URL of this repo: `https://github.com/evandrocoan/AutoFileName` in the input field.
-2. Open up the command palette again and find `Package Control: Install Package`, and just search for `AutoFileName`. (just a normal install)
+## Installation
 
-If you want to remove this and go back to the default version of AutoFileName, find `Package Control: Remove Repository`, and select the repository to remove it. You can now reinstall the default version.
+### By Package Control
+
+1. Download & Install `Sublime Text 3` (https://www.sublimetext.com/3)
+1. Go to the menu `Tools -> Install Package Control`, then,
+   wait few seconds until the `Package Control` installation finishes
+1. Go to the menu `Preferences -> Package Control`
+1. Type `Package Control Add Channel` on the opened quick panel and press <kbd>Enter</kbd>
+1. Then, input the following address and press <kbd>Enter</kbd>
+   ```
+   https://raw.githubusercontent.com/evandrocoan/StudioChannel/master/channel.json
+   ```
+1. Now, go again to the menu `Preferences -> Package Control`
+1. This time type `Package Control Install Package` on the opened quick panel and press <kbd>Enter</kbd>
+1. Then, search for `AutoFileName` and press <kbd>Enter</kbd>
+
+See also:
+1. [ITE - Integrated Toolset Environment](https://github.com/evandrocoan/ITE)
+1. [Package control docs](https://packagecontrol.io/docs/usage) for details.
+
 
 Usage
 -----
@@ -38,7 +52,7 @@ If you are looking to autocomplete an image path in an HTML `<img>` tag:
 Pressing <kbd>ctrl</kbd>+<kbd>space</kbd>, will activate AutoFileName.  I list of available files where be ready to select.
 
 *Looking for an even more automatic and seemless completion?*  Add the following to your User Settings file:
-    
+
     "auto_complete_triggers":
     [
       {
