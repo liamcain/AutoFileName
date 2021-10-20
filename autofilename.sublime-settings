@@ -8,15 +8,15 @@
 	// Changing this setting allows for absolute paths on a project level.
 	// This is useful for web designers and developers who want to use the
 	// root of their site.
-	"afn_use_project_root": false,
+	"afn_use_project_root": true,
 
 	// Override the project root. Will only work
 	// if "auto_file_name_use_project_root" is true.
 	// Can be absolute or relative to the current directory.
-	"afn_proj_root": "../",
+	"afn_proj_root": "/",
 
 	// Specify which scopes will trigger AutoFileName
-	"afn_valid_scopes":["string","css","sass","less","scss"],
+	"afn_valid_scopes":["string","css","sass","less","scss","markdown"],
 
 	// Turn on if using a template language like Slim and want to
 	// insert image dimensions.  If using a template language, you also have
@@ -47,5 +47,11 @@
 	//  ]
 	// }
 	//
-	"afn_use_keybinding": false
+	"afn_use_keybinding": false,
+
+	// It is new mode by wanyaxing
+	// In this mode, all suggesting menus will show in a popup,
+	// It do not support keyboard such as key up or key down, You should click the menu with mouse.
+	// If You want the original AutoFileName, you should disable this feature.
+	"afn_popup_preview_mode": true,
 }

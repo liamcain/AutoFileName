@@ -2,6 +2,11 @@ import sublime
 import sublime_plugin
 import os
 from .getimageinfo import getImageInfo
+import base64
+
+TEMPLATE = '''
+    <a style="text-decoration:none;line-height:36px;display:block;" href="%s"><div>%s %s</div></a>
+    '''
 
 class AfnShowFilenames(sublime_plugin.TextCommand):
     def run(self, edit):
@@ -14,11 +19,13 @@ class AfnSettingsPanel(sublime_plugin.WindowCommand):
     def run(self):
         use_pr = '✗ Stop using project root' if self.get_setting('afn_use_project_root') else '✓ Use Project Root'
         use_dim = '✗ Disable HTML Image Dimension insertion' if self.get_setting('afn_insert_dimensions') else '✓ Auto-insert Image Dimensions in HTML'
+        use_popup = '✗ Stop Popup Preview Mode' if self.get_setting('afn_popup_preview_mode') else '✓ Use Popup Preview Mode'
         p_root = self.get_setting('afn_proj_root')
 
         menu = [
                 [use_pr, p_root],
-                [use_dim, '<img src="_path_" width = "x" height = "y" >']
+                [use_dim, '<img src="_path_" width = "x" height = "y" >'],
+                [use_popup, 'All menus show in a popup, you should chose item with mouse.']
                ]
         self.window.show_quick_panel(menu, self.on_done)
 
@@ -28,8 +35,11 @@ class AfnSettingsPanel(sublime_plugin.WindowCommand):
             use_pr = settings.get('afn_use_project_root')
             settings.set('afn_use_project_root', not use_pr)
         if value == 1:
-            use_dim = settings.get('afn_use_project_root')
-            settings.set('afn_use_project_root', not use_dim)
+            use_dim = settings.get('afn_insert_dimensions')
+            settings.set('afn_insert_dimensions', not use_dim)
+        if value == 2:
+            use_popup = settings.get('afn_popup_preview_mode')
+            settings.set('afn_popup_preview_mode', not use_popup)
 
     def get_setting(self,string,view=None):
         if view and view.settings().get(string):
@@ -43,6 +53,16 @@ class AfnDeletePrefixedSlash(sublime_plugin.TextCommand):
         sel = self.view.sel()[0].a
         reg = sublime.Region(sel-4,sel-3)
         self.view.erase(edit, reg)
+
+# Used to remove the / or \ when autocompleting a Windows drive (eg. /C:/path)
+class ReplaceCurWord(sublime_plugin.TextCommand):
+    def run(self, edit, **args):
+        href = args.get('href')
+        selStart = args.get('selStart')
+        sel = self.view.sel()[0].a
+        reg = sublime.Region(selStart,sel)
+        self.view.erase(edit, reg)
+        self.view.insert(edit, selStart,href)
 
 # inserts width and height dimensions into img tags. HTML only
 class InsertDimensionsCommand(sublime_plugin.TextCommand):
@@ -96,6 +116,7 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
 
         # if using a template language, the scope is set to the current line
         tag_scope = view.line(sel) if self.get_setting('afn_template_languages',view) else view.extract_scope(scope.a-1)
+        print(tag_scope)
 
         path = view.substr(scope)
         if path.startswith(("'","\"","(")):
@@ -104,7 +125,7 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
         path = path[path.rfind(FileNameComplete.sep):] if FileNameComplete.sep in path else path
         full_path = self.this_dir + path
 
-        if self.img_tag_in_region(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
+        if self.get_setting('afn_insert_dimensions',self.view) and self.img_tag_in_region(tag_scope) and path.endswith(('.png','.jpg','.jpeg','.gif')):
             with open(full_path,'rb') as r:
                 read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
             w, h = getImageInfo(read_data)
@@ -186,14 +207,38 @@ class FileNameComplete(sublime_plugin.EventListener):
     def fix_dir(self,sdir,fn):
         if fn.endswith(('.png','.jpg','.jpeg','.gif')):
             path = os.path.join(sdir, fn)
+            size = ("%.0fkb" % (os.path.getsize(path) / 1000))
             with open(path,'rb') as r:
                 read_data = r.read() if path.endswith(('.jpg','.jpeg')) else r.read(24)
             w, h = getImageInfo(read_data)
-            return fn+'\t'+'w:'+ str(w) +" h:" + str(h)
+            return fn +'\t' + size +'\t'+'w:'+ str(w) +" h:" + str(h)
         return fn
 
+    def popup_item(self,sdir,fn):
+        if fn.endswith(('.png','.jpg','.jpeg','.gif')):
+            path = os.path.join(sdir, fn)
+            size = ("%.0fkb" % (os.path.getsize(path) / 1000))
+            with open(path,'rb') as r:
+                read_data = r.read()# if path.endswith(('.jpg','.jpeg')) else r.read(24)
+            w, h = getImageInfo(read_data)
+            if w > h:
+                styleW = 28
+                styleH = styleW * h / w
+            else:
+                styleH = 28
+                styleW = styleH * w / h
+            encoded = str(base64.b64encode(read_data), "utf-8")
+            return '<img style="width: %dpx;height: %dpx;" alt="width: %dpx;height: %dpx;" src="data:image/png;base64,%s"/>' % (styleW,styleH,w, h, encoded)
+        return ''
+
     def get_cur_path(self,view,sel):
-        scope_contents = view.substr(view.extract_scope(sel-1)).strip()
+        sel0 = sel
+        while sel0>0:
+            charact = view.substr(sublime.Region(sel0-1,sel0))
+            if charact in ['\r','\n','\'','"',')','(','[',']',' ']:
+                break;
+            sel0=sel0-1
+        scope_contents = view.substr(sublime.Region(sel0,sel)).strip()
         cur_path = scope_contents.replace('\r\n', '\n').split('\n')[0]
         if cur_path.startswith(("'","\"","(")):
             cur_path = cur_path[1:-1]
@@ -206,15 +251,31 @@ class FileNameComplete(sublime_plugin.EventListener):
         else:
             return sublime.load_settings('autofilename.sublime-settings').get(string)
 
+    def on_query_context(self, view, key, operator, operand, match_all):
+        # print("autofilename.py on_query_context:")
+        self.extract_hits(view)
+    
+    def on_modified(self, view):
+        # print("autofilename.py on_modified:")
+        self.extract_hits(view)
+        
     def on_query_completions(self, view, prefix, locations):
+        # print('autofilename.py on_query_completions:')
+        completions=self.extract_hits(view)
+        return completions
+
+    def extract_hits(self,view):
         is_proj_rel = self.get_setting('afn_use_project_root',view)
         valid_scopes = self.get_setting('afn_valid_scopes',view)
+        # print("autofilename.py debug2")
         blacklist = self.get_setting('afn_blacklist_scopes', view)
         uses_keybinding = self.get_setting('afn_use_keybinding', view)
+        is_popup_preview = self.get_setting('afn_popup_preview_mode',view)
 
         sel = view.sel()[0].a
         this_dir = ""
         completions = []
+        popupItems = []
 
         if uses_keybinding and not FileNameComplete.is_active:
             return
@@ -225,9 +286,15 @@ class FileNameComplete(sublime_plugin.EventListener):
 
         cur_path = os.path.expanduser(self.get_cur_path(view, sel))
 
+        if len(cur_path)==0:
+            return
 
+        # print(cur_path)
+
+        is_harddisk_root = False
         if cur_path.startswith('/') or cur_path.startswith('\\'):
             if is_proj_rel:
+                is_harddisk_root = True
                 proot = self.get_setting('afn_proj_root', view)
                 if proot:
                     if not view.file_name() and not os.path.isabs(proot):
@@ -236,25 +303,71 @@ class FileNameComplete(sublime_plugin.EventListener):
                 else:
                     for f in sublime.active_window().folders():
                         if f in view.file_name():
-                            cur_path = f
+                            cur_path = f + cur_path
+        elif cur_path.startswith('~@/') or cur_path.startswith('@/'):
+            if is_proj_rel:
+                for f in sublime.active_window().folders():
+                    if f in view.file_name():
+                        if cur_path.startswith('~@/'):
+                            cur_path = f + '/src/' + cur_path[3:]
+                        elif cur_path.startswith('@/'):
+                            cur_path = f + '/src/' + cur_path[2:]
         elif not view.file_name():
             return
         else:
             this_dir = os.path.split(view.file_name())[0]
         this_dir = os.path.join(this_dir, cur_path)
-
+        # print(this_dir)
         try:
             if sublime.platform() == "windows" and len(view.extract_scope(sel)) < 4 and os.path.isabs(cur_path):
                 self.showing_win_drives = True
                 return self.get_drives()
             self.showing_win_drives = False
+
+            cur_cmd = view.substr(view.extract_scope(sel-1)).strip("\"'")
+            cur_word = cur_cmd[cur_cmd.rfind(FileNameComplete.sep)+1:] if FileNameComplete.sep in cur_cmd else ''
+            # print(cur_word)
+            if cur_word.endswith(' ') or cur_word.startswith(' '):
+                return
+
+            # print([this_dir,cur_word])
             dir_files = os.listdir(this_dir)
 
             for d in dir_files:
                 if d.startswith('.'): continue
-                if not '.' in d: d += FileNameComplete.sep
-                completions.append((self.fix_dir(this_dir,d), d))
+                if not '.' in d:
+                    d += FileNameComplete.sep
+                    if cur_word=='' or d.find(cur_word)>=0 or cur_word.endswith('/'):
+                        if is_popup_preview:
+                            popupItems.append(TEMPLATE % (d,self.popup_item(this_dir,d),d))
+                        completions.append((self.fix_dir(this_dir,d), d))
+            # print(completions)
+            for d in dir_files:
+                if d.startswith('.'): continue
+                if '.' in d:
+                    if cur_word=='' or d.find(cur_word)>=0 or cur_word.endswith('/'):
+                        if is_popup_preview:
+                            popupItems.append(TEMPLATE % (d,self.popup_item(this_dir,d),d))
+                        completions.append((self.fix_dir(this_dir,d), d))
+            if not completions:
+                if cur_word != '' and not is_harddisk_root:
+                    for root, dirs, files in os.walk(this_dir, topdown=False):
+                        for d in files:
+                            if d.find(cur_word) >= 0:
+                                if is_popup_preview:
+                                    popupItems.append(TEMPLATE % (root.replace(this_dir,'') +'/'+ d,self.popup_item(root,d),root.replace(this_dir,'') +'/'+ d) )
+                                completions.append((root.replace(this_dir,'')+'/'+self.fix_dir(root,d),root.replace(this_dir,'') +'/'+ d) )
+            if is_popup_preview:
+                if popupItems:
+                    selStart = sel - len(cur_word)
+                    def on_navigate(href):
+                        view.run_command('replace_cur_word',{'href':href,'selStart':selStart})
+                    view.show_popup(''.join(popupItems),sublime.COOPERATE_WITH_AUTO_COMPLETE,-1,500,500,on_navigate=on_navigate);
+                else:
+                    view.hide_popup()
+
             if completions:
+                # print(completions)
                 InsertDimensionsCommand.this_dir = this_dir
                 return completions
             return
