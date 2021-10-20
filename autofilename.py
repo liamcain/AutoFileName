@@ -116,6 +116,7 @@ class InsertDimensionsCommand(sublime_plugin.TextCommand):
 
         # if using a template language, the scope is set to the current line
         tag_scope = view.line(sel) if self.get_setting('afn_template_languages',view) else view.extract_scope(scope.a-1)
+        print(tag_scope)
 
         path = view.substr(scope)
         if path.startswith(("'","\"","(")):
@@ -228,10 +229,16 @@ class FileNameComplete(sublime_plugin.EventListener):
                 styleW = styleH * w / h
             encoded = str(base64.b64encode(read_data), "utf-8")
             return '<img style="width: %dpx;height: %dpx;" alt="width: %dpx;height: %dpx;" src="data:image/png;base64,%s"/>' % (styleW,styleH,w, h, encoded)
-        return None
+        return ''
 
     def get_cur_path(self,view,sel):
-        scope_contents = view.substr(view.extract_scope(sel-1)).strip()
+        sel0 = sel
+        while sel0>0:
+            charact = view.substr(sublime.Region(sel0-1,sel0))
+            if charact in ['\r','\n','\'','"',')','(','[',']',' ']:
+                break;
+            sel0=sel0-1
+        scope_contents = view.substr(sublime.Region(sel0,sel)).strip()
         cur_path = scope_contents.replace('\r\n', '\n').split('\n')[0]
         if cur_path.startswith(("'","\"","(")):
             cur_path = cur_path[1:-1]
@@ -244,9 +251,23 @@ class FileNameComplete(sublime_plugin.EventListener):
         else:
             return sublime.load_settings('autofilename.sublime-settings').get(string)
 
+    def on_query_context(self, view, key, operator, operand, match_all):
+        # print("autofilename.py on_query_context:")
+        self.extract_hits(view)
+    
+    def on_modified(self, view):
+        # print("autofilename.py on_modified:")
+        self.extract_hits(view)
+        
     def on_query_completions(self, view, prefix, locations):
+        # print('autofilename.py on_query_completions:')
+        completions=self.extract_hits(view)
+        return completions
+
+    def extract_hits(self,view):
         is_proj_rel = self.get_setting('afn_use_project_root',view)
         valid_scopes = self.get_setting('afn_valid_scopes',view)
+        # print("autofilename.py debug2")
         blacklist = self.get_setting('afn_blacklist_scopes', view)
         uses_keybinding = self.get_setting('afn_use_keybinding', view)
         is_popup_preview = self.get_setting('afn_popup_preview_mode',view)
@@ -268,8 +289,12 @@ class FileNameComplete(sublime_plugin.EventListener):
         if len(cur_path)==0:
             return
 
+        # print(cur_path)
+
+        is_harddisk_root = False
         if cur_path.startswith('/') or cur_path.startswith('\\'):
             if is_proj_rel:
+                is_harddisk_root = True
                 proot = self.get_setting('afn_proj_root', view)
                 if proot:
                     if not view.file_name() and not os.path.isabs(proot):
@@ -292,7 +317,7 @@ class FileNameComplete(sublime_plugin.EventListener):
         else:
             this_dir = os.path.split(view.file_name())[0]
         this_dir = os.path.join(this_dir, cur_path)
-
+        # print(this_dir)
         try:
             if sublime.platform() == "windows" and len(view.extract_scope(sel)) < 4 and os.path.isabs(cur_path):
                 self.showing_win_drives = True
@@ -301,35 +326,36 @@ class FileNameComplete(sublime_plugin.EventListener):
 
             cur_cmd = view.substr(view.extract_scope(sel-1)).strip("\"'")
             cur_word = cur_cmd[cur_cmd.rfind(FileNameComplete.sep)+1:] if FileNameComplete.sep in cur_cmd else ''
+            # print(cur_word)
             if cur_word.endswith(' ') or cur_word.startswith(' '):
                 return
 
+            # print([this_dir,cur_word])
             dir_files = os.listdir(this_dir)
 
             for d in dir_files:
                 if d.startswith('.'): continue
                 if not '.' in d:
                     d += FileNameComplete.sep
-                    if cur_word=='' or d.find(cur_word)>=0:
+                    if cur_word=='' or d.find(cur_word)>=0 or cur_word.endswith('/'):
+                        if is_popup_preview:
+                            popupItems.append(TEMPLATE % (d,self.popup_item(this_dir,d),d))
                         completions.append((self.fix_dir(this_dir,d), d))
+            # print(completions)
             for d in dir_files:
                 if d.startswith('.'): continue
                 if '.' in d:
-                    if cur_word=='' or d.find(cur_word)>=0:
+                    if cur_word=='' or d.find(cur_word)>=0 or cur_word.endswith('/'):
                         if is_popup_preview:
-                            popup_item = self.popup_item(this_dir,d)
-                            if popup_item:
-                                popupItems.append(TEMPLATE % (d,self.popup_item(this_dir,d),d))
+                            popupItems.append(TEMPLATE % (d,self.popup_item(this_dir,d),d))
                         completions.append((self.fix_dir(this_dir,d), d))
             if not completions:
-                if cur_word != '':
+                if cur_word != '' and not is_harddisk_root:
                     for root, dirs, files in os.walk(this_dir, topdown=False):
                         for d in files:
                             if d.find(cur_word) >= 0:
                                 if is_popup_preview:
-                                    popup_item = self.popup_item(root,d)
-                                    if popup_item:
-                                        popupItems.append(TEMPLATE % (root.replace(this_dir,'') +'/'+ d,self.popup_item(root,d),root.replace(this_dir,'') +'/'+ d) )
+                                    popupItems.append(TEMPLATE % (root.replace(this_dir,'') +'/'+ d,self.popup_item(root,d),root.replace(this_dir,'') +'/'+ d) )
                                 completions.append((root.replace(this_dir,'')+'/'+self.fix_dir(root,d),root.replace(this_dir,'') +'/'+ d) )
             if is_popup_preview:
                 if popupItems:
@@ -341,6 +367,7 @@ class FileNameComplete(sublime_plugin.EventListener):
                     view.hide_popup()
 
             if completions:
+                # print(completions)
                 InsertDimensionsCommand.this_dir = this_dir
                 return completions
             return
